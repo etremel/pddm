@@ -80,9 +80,6 @@ void SimNetworkClient::receive_message(const messaging::MessageType& message_typ
         case MessageType::QUERY_REQUEST:
             meter_client.handle_message(static_pointer_cast<QueryRequest>(message));
             break;
-        case MessageType::SIGNATURE_REQUEST:
-            meter_client.handle_message(static_pointer_cast<SignatureRequest>(message));
-            break;
         case MessageType::SIGNATURE_RESPONSE:
             meter_client.handle_message(static_pointer_cast<SignatureResponse>(message));
             break;
@@ -168,9 +165,6 @@ void SimNetworkClient::resume_from_busy() {
         case MessageType::QUERY_REQUEST:
             meter_client.handle_message(static_pointer_cast<QueryRequest>(message));
             break;
-        case MessageType::SIGNATURE_REQUEST:
-            meter_client.handle_message(static_pointer_cast<SignatureRequest>(message));
-            break;
         case MessageType::SIGNATURE_RESPONSE:
             meter_client.handle_message(static_pointer_cast<SignatureResponse>(message));
             break;
@@ -181,7 +175,9 @@ void SimNetworkClient::resume_from_busy() {
 
 NetworkClientBuilderFunc network_client_builder(const std::shared_ptr<Network>& network) {
     return [network](MeterClient& meter_client) {
-      return SimNetworkClient(meter_client, network);
+      SimNetworkClient network_client(meter_client, network);
+      network->connect_meter(network_client, meter_client.meter_id);
+      return network_client;
     };
 }
 } /* namespace simulation */

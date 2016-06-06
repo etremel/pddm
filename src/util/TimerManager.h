@@ -27,14 +27,14 @@ class TimerManager {
          * @return A unique identifier for this timer, which will allow it to
          * be cancelled later.
          */
-        virtual int register_timer(int delay_ms, std::function<void(void)>& callback);
+        virtual int register_timer(const int delay_ms, std::function<void(void)> callback);
         /**
          * Cancels a timer that has not yet expired, so that it will take no
          * action when it expires. If this is called on a timer that has already
          * expired, it does nothing.
          * @param timer_id The unique identifier for the timer to cancel.
          */
-        virtual void cancel_timer(int timer_id);
+        virtual void cancel_timer(const int timer_id);
         virtual ~TimerManager() = 0;
 };
 

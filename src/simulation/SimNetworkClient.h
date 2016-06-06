@@ -55,7 +55,7 @@ class SimNetworkClient : public NetworkClient {
         void resume_from_busy();
 
     public:
-        SimNetworkClient(MeterClient& owning_meter_client, std::shared_ptr<Network> network) :
+        SimNetworkClient(MeterClient& owning_meter_client, const std::shared_ptr<Network>& network) :
             meter_client(owning_meter_client), network(network), event_manager(network->event_manager),
             accumulated_delay_micros(0), client_is_busy(false), busy_until_time(0) {};
         virtual ~SimNetworkClient();
@@ -70,6 +70,7 @@ class SimNetworkClient : public NetworkClient {
         /** Instructs the client to consider its MeterClient "busy" for a period of time.
          * Called by the SimCryptoLibrary when the client does a crypto operation. */
         void delay_client(const int delay_time_micros);
+
 };
 
 
@@ -96,6 +97,5 @@ std::shared_ptr<Ret> cast_helper(const std::shared_ptr<void>& message) {
 }
 
 NetworkClientBuilderFunc network_client_builder(const std::shared_ptr<Network>& network);
-
 } /* namespace simulation */
 } /* namespace psm */

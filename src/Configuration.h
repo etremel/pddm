@@ -9,6 +9,7 @@
 
 //Include the implementations here, so the client doesn't have to know which ones to include
 #include "simulation/SimNetworkClient.h"
+#include "simulation/SimUtilityNetworkClient.h"
 #include "util/FixedPoint.h"
 #include "CtProtocolState.h"
 #include "simulation/Meter.h"
@@ -24,6 +25,7 @@ using ProtocolState_t = CtProtocolState;
 using FixedPoint_t = util::FixedPoint<long long, 16>;
 using Meter_t = simulation::Meter;
 using NetworkClient_t = simulation::SimNetworkClient;
+using UtilityNetworkClient_t = simulation::SimUtilityNetworkClient;
 using TimerManager_t = simulation::SimTimerManager;
 using CryptoLibrary_t = simulation::SimCryptoWrapper;
 

@@ -9,13 +9,14 @@
 
 #include <type_traits>
 #include <cmath>
-#include <set>
+#include <unordered_set>
 #include <list>
 #include <memory>
 
 #include "Configuration.h"
 #include "messaging/QueryRequest.h"
 #include "messaging/OverlayTransportMessage.h"
+#include "../util/PointerUtil.h"
 
 namespace pddm {
 
@@ -36,6 +37,7 @@ class ProtocolState {
         void require_handle_overlay_message_impl(const std::shared_ptr<messaging::OverlayTransportMessage>& message) {
             impl_this->handle_overlay_message_impl(message); }
         void require_end_overlay_round_impl() { impl_this->end_overlay_round_impl(); }
+        static void require_init_failures_tolerated(const int num_meters) { Impl::init_failures_tolerated(num_meters);}
 
     public:
         ProtocolState(Impl* subclass_ptr, const NetworkClient_t& network, const CryptoLibrary_t& crypto,
@@ -52,11 +54,17 @@ class ProtocolState {
         void buffer_future_message(const std::shared_ptr<messaging::OverlayTransportMessage>& message);
         void buffer_future_message(const std::shared_ptr<messaging::AggregationMessage>& message);
 
-
-
         int get_num_aggregation_groups() const { return num_aggregation_groups; }
         int get_current_query_num() const { return my_contribution ? my_contribution->query_num : -1; }
         int get_current_overlay_round() const { return overlay_round; }
+
+        /** The maximum time (ms) any meter should wait on receiving a message in an overlay round */
+        static constexpr int OVERLAY_ROUND_TIMEOUT = 100;
+        /** The number of failures tolerated by the currently running instance of the system.
+         * This is set only once, at startup, once the number of meters in the system is known.
+         * It should be initialized, by calling init_failures_tolerated(), before creating
+         * any instances of ProtocolState. */
+        static int FAILURES_TOLERATED;
 
     protected:
         NetworkClient_t& network;
@@ -86,11 +94,12 @@ class ProtocolState {
         std::list<std::shared_ptr<messaging::OverlayMessage>> outgoing_messages;
 
         std::shared_ptr<messaging::ValueTuple> my_contribution;
-        /** Set automatically rejects duplicate proxy contributions;
-         * since the set of proxies is part of ValueContribution.equals(),
-         * two meters are allowed to contribute the same value
-         * (they should have distinct proxy sets). */
-        std::set<messaging::ValueContribution> proxy_values;
+        /** This automatically rejects duplicate proxy contributions; it must
+         * be an unordered_set because there's no sensible way to "sort" contributions.
+         * Since the set of proxies is part of ValueContribution's value equality
+         * (by way of ValueTuple), two meters are allowed to contribute the same
+         * measurement (they should have distinct proxy sets). */
+        util::unordered_ptr_set<messaging::ValueContribution> proxy_values;
         TreeAggregationState aggregation_phase_state;
 
         void handle_round_timeout();
@@ -106,6 +115,9 @@ class ProtocolState {
 
 };
 
+//Useless boilerplate to complete the declaration of the static member FAILURES_TOLERATED
+template<typename Impl>
+static int ProtocolState<Impl>::FAILURES_TOLERATED;
 
 }
 

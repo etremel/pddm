@@ -8,21 +8,28 @@
 #pragma once
 
 #include <vector>
+#include <list>
 
 #include "../Configuration.h"
 #include "SimParameters.h"
 #include "Device.h"
 #include "DeviceState.h"
 #include "../util/Money.h"
+#include "IncomeLevel.h"
 
 namespace pddm {
 namespace simulation {
 
+/**
+ * Represents a simulated meter, which generates simulated electrical consumption
+ * measurements based on a list of devices in the "home" it is attached to.
+ */
 class Meter : public MeterInterface {
     private:
         std::vector<std::pair<Device, DeviceState>> shiftable_devices;
         std::vector<std::pair<Device, DeviceState>> nonshiftable_devices;
         PriceFunction energy_price_function;
+        IncomeLevel income_level;
         int current_timestep;
         std::vector<FixedPoint_t> consumption;
         std::vector<FixedPoint_t> shiftable_consumption;
@@ -34,8 +41,8 @@ class Meter : public MeterInterface {
         FixedPoint_t measure(const std::vector<FixedPoint_t>& data, const int window_minutes) const;
 
     public:
-        Meter(std::vector<Device>& owned_devices, const PriceFunction& energy_price_function);
-        std::vector<FixedPoint_t> simulate_projected_usage(const PriceFunction& projected_price, int time_window) override;
+        Meter(std::list<Device>& owned_devices, const PriceFunction& energy_price_function, const IncomeLevel& income_level);
+        std::vector<FixedPoint_t> simulate_projected_usage(const PriceFunction& projected_price, const int time_window) override;
         FixedPoint_t measure_consumption(const int window_minutes) const override;
         FixedPoint_t measure_shiftable_consumption(const int window_minutes) const override;
         FixedPoint_t measure_daily_consumption() const override;
@@ -44,7 +51,7 @@ class Meter : public MeterInterface {
 };
 
 
-MeterBuilderFunc meter_builder(std::vector<Device>& owned_devices, const Meter::PriceFunction& energy_price_function);
+MeterBuilderFunc meter_builder(const IncomeLevel& income_level, std::list<Device>& owned_devices, const Meter::PriceFunction& energy_price_function, std::vector<std::reference_wrapper<Meter>>& meter_references);
 
 } /* namespace simulation */
 } /* namespace psm */

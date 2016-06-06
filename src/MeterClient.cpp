@@ -8,6 +8,8 @@
 #include "MeterClient.h"
 #include "messaging/QueryRequest.h"
 
+#include <type_traits>
+
 using std::shared_ptr;
 using namespace pddm::messaging;
 
@@ -117,7 +119,16 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::QueryRequest>&
 }
 
 void MeterClient::handle_message(const std::shared_ptr<messaging::SignatureResponse>& message) {
-    //Only the BftProtocolState can handle this, and we should only get it when ProtocolState is BftProtocolState
+    //Using a raw pointer to a local value type is ugly, but it's the only way to select code at compile time based on the type of ProtocolState_t
+    handle_signature_response(message, &primary_protocol_state);
 }
 
+void MeterClient::handle_signature_response(const std::shared_ptr<messaging::SignatureResponse>& message, BftProtocolState* bft_protocol) {
+    bft_protocol->handle_signature_response(message);
 }
+
+void MeterClient::handle_signature_response(const std::shared_ptr<messaging::SignatureResponse>& message, void* protocol_is_not_bft) {
+    /* Do nothing, non-BFT protocols will never get this message */
+}
+
+} /* namespace pddm */

@@ -25,12 +25,13 @@ class SimTimerManager: public util::TimerManager {
     public:
         SimTimerManager(const EventManager& event_manager) : next_id(0), timer_events(), event_manager(event_manager) {}
         virtual ~SimTimerManager();
-        int register_timer(int delay_ms, std::function<void(void)>& callback);
-        void cancel_timer(int timer_id);
+        int register_timer(const int delay_ms, std::function<void(void)> callback);
+        void cancel_timer(const int timer_id);
 };
 
 
 TimerManagerBuilderFunc timer_manager_builder(const EventManager& event_manager);
+std::function<TimerManager_t (UtilityClient&)> timer_manager_builder_utility(const EventManager& event_manager);
 
 } /* namespace simulation */
 } /* namespace psm */

@@ -18,10 +18,10 @@ namespace pddm {
  * MeterClient to get measurements.
  */
 class MeterInterface {
-        using PriceFunction = std::function<Money (int)>;
+        using PriceFunction = std::function<Money (const int)>;
     public:
         virtual ~MeterInterface() = 0;
-        virtual std::vector<FixedPoint_t> simulate_projected_usage(const PriceFunction& projected_price, int time_window);
+        virtual std::vector<FixedPoint_t> simulate_projected_usage(const PriceFunction& projected_price, const int time_window);
         virtual FixedPoint_t measure_consumption(const int window_minutes);
         virtual FixedPoint_t measure_shiftable_consumption(const int window_minutes);
         virtual FixedPoint_t measure_daily_consumption();

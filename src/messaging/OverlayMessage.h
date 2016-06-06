@@ -26,5 +26,17 @@ class OverlayMessage: public MessageBody {
             query_num(query_num), destination(dest_id), body(body), is_encrypted(is_encrypted) {};
 };
 
+inline bool operator==(const OverlayMessage& lhs, const OverlayMessage& rhs) {
+    return lhs.query_num == rhs.query_num
+            && lhs.destination == rhs.destination
+            && lhs.is_encrypted == rhs.is_encrypted
+            && (lhs.body == nullptr ? rhs.body == nullptr :
+                    (rhs.body != nullptr && *lhs.body == *rhs.body));
+}
+
+inline bool operator!=(const OverlayMessage& lhs, const OverlayMessage& rhs) {
+    return !(lhs == rhs);
+}
+
 } /* namespace messaging */
 } /* namespace psm */

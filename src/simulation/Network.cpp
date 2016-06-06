@@ -8,21 +8,25 @@
 #include <algorithm>
 #include <stdexcept>
 #include <string>
+#include <cmath>
+#include <functional>
 
 #include "Network.h"
 
 namespace pddm {
 namespace simulation {
 
-void Network::connect_meter(const std::shared_ptr<SimNetworkClient>& meter_client, const int id) {
+const int MIN_LATENCY = 2;
+
+void Network::connect_meter(const SimNetworkClient& meter_client, const int id) {
     meter_clients.resize(std::min(static_cast<int>(meter_clients.size()), id));
-    meter_clients[id] = meter_client;
+    meter_clients[id] = std::ref(meter_client);
     failed.resize(meter_clients.size());
     failed[id] = false;
 }
 
-void Network::connect_utility(const std::shared_ptr<SimNetworkClient>& utility) {
-    this->utility = utility;
+void Network::connect_utility(const SimUtilityNetworkClient& utility) {
+    this->utility = std::ref(utility);
 }
 /**
  * Each untyped pointer to a message in the list should be identified by its
@@ -36,8 +40,8 @@ void Network::send(const std::list<std::pair<messaging::MessageType, std::shared
     //Handle messages sent to the utility
     if(recipient_id == -1) {
         event_manager.submit([messages](){
-            for(auto& message_pair : messages) {
-                utility->receive_message(message_pair.first, message_pair.second);
+            for(const auto& message_pair : messages) {
+                utility.get().receive_message(message_pair.first, message_pair.second);
             }
         }, event_manager.simulation_time + generate_latency());
         return;
@@ -48,8 +52,8 @@ void Network::send(const std::list<std::pair<messaging::MessageType, std::shared
             //TODO: create some send error event for meters that failed
         } else {
             event_manager.submit([messages, recipient_id](){
-                for(auto& message_pair : messages) {
-                    meter_clients[recipient_id]->receive_message(message_pair.first, message_pair.second);
+                for(const auto& message_pair : messages) {
+                    meter_clients[recipient_id].get().receive_message(message_pair.first, message_pair.second);
                 }
             }, event_manager.simulation_time + generate_latency());
         }
@@ -68,6 +72,10 @@ void Network::reset_failures() {
     }
 }
 
+int Network::generate_latency() {
+    return (int) fmax(MIN_LATENCY + round(latency_distribution(latency_randomness)), 0);
+}
 
 } /* namespace simulation */
 } /* namespace psm */
+

@@ -26,7 +26,7 @@ class NetworkClient {
     public:
         virtual ~NetworkClient() = 0;
         /**
-         * Sends a stream of overaly messages over the network to another meter,
+         * Sends a stream of overlay messages over the network to another meter,
          * identified by its ID. Messages will be sent in the order they appear
          * in the list.
          * @param messages The messages to send.

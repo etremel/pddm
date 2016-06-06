@@ -20,9 +20,9 @@ using std::vector;
 using std::make_pair;
 using namespace timesteps;
 
-Meter::Meter(std::vector<Device>& owned_devices, const PriceFunction& energy_price_function) :
-        energy_price_function(energy_price_function), current_timestep(-1), consumption(TOTAL_TIMESTEPS),
-        shiftable_consumption(TOTAL_TIMESTEPS), cost(TOTAL_TIMESTEPS) {
+Meter::Meter(std::list<Device>& owned_devices, const PriceFunction& energy_price_function, const IncomeLevel& income_level) :
+        energy_price_function(energy_price_function), income_level(income_level), current_timestep(-1),
+        consumption(TOTAL_TIMESTEPS), shiftable_consumption(TOTAL_TIMESTEPS), cost(TOTAL_TIMESTEPS) {
     for(auto& device : owned_devices) {
         //Currently, only air conditioners are shiftable (smart thermostats)
         if(device.name.find("conditioner") != string::npos) {
@@ -91,9 +91,14 @@ FixedPoint_t Meter::measure_daily_consumption() const {
 }
 
 
-MeterBuilderFunc meter_builder(std::vector<Device>& owned_devices, const Meter::PriceFunction& energy_price_function) {
-    return [&owned_devices, &energy_price_function](MeterClient& client) {
-        return Meter(owned_devices, energy_price_function);
+MeterBuilderFunc meter_builder(const IncomeLevel& income_level, std::list<Device>& owned_devices,
+        const Meter::PriceFunction& energy_price_function, std::vector<std::reference_wrapper<Meter>>& meter_references) {
+    return [&income_level, &owned_devices, &energy_price_function, &meter_references](MeterClient& client) {
+        Meter new_meter(income_level, owned_devices, energy_price_function);
+        //Assuming MeterClients are created in strict ID order, this will put a reference to the Meter
+        //at the same index as the ID of the new MeterClient that owns it
+        meter_references.push_back(std::ref(new_meter));
+        return new_meter;
     };
 }
 

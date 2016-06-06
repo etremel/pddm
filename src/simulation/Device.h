@@ -15,8 +15,14 @@ namespace pddm {
 
 namespace simulation {
 
+/**
+ * A simple data object holding the characteristics of a simulated electricity-using
+ * device. Collections of devices are used to generate simulated electrical
+ * consumption for a simulation::Meter.
+ */
 struct Device {
-    std::string name; //must uniquely identify the device
+    /** The device's name, as used in the configuration files; must uniquely identify the device */
+    std::string name;
     /** in Watts; array size is number of possible unique cycles */
     std::vector<FixedPoint_t> load_per_cycle;
     /**in minutes; should align with loadPerCycle array */
@@ -32,6 +38,7 @@ struct Device {
     /** if the customer will turn off this device when they can't afford the energy prices */
     bool disable_to_save_money;
 
+    //Default copy and move constructors, please
     Device(Device&&) = default;
 };
 

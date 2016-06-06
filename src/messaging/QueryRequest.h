@@ -26,8 +26,20 @@ class QueryRequest: public MessageBody {
         const PriceFunction proposed_price_function;
         QueryRequest(const QueryType& request_type, const int time_window, const int query_number, const PriceFunction& proposed_price_function) :
             request_type(request_type), time_window(time_window), query_number(query_number), proposed_price_function(proposed_price_function) {}
-         QueryRequest(const QueryType& request_type, const int time_window, const int query_number) :
-             request_type(request_type), time_window(time_window), query_number(query_number) {}
+        QueryRequest(const QueryType& request_type, const int time_window, const int query_number) :
+            request_type(request_type), time_window(time_window), query_number(query_number) {}
+};
+
+struct QueryNumLess {
+        inline bool operator()(const QueryRequest& lhs, const QueryRequest& rhs) const {
+            return lhs.query_number < rhs.query_number;
+        }
+};
+
+struct QueryNumGreater {
+        inline bool operator()(const QueryRequest& lhs, const QueryRequest& rhs) const {
+            return lhs.query_number > rhs.query_number;
+        }
 };
 
 } /* namespace messaging */

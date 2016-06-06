@@ -31,12 +31,12 @@ class SimCrypto {
         SimCrypto(const int num_meters) : meter_network_clients(num_meters) {}
         void add_meter(const int meter_id, const SimNetworkClient& meter_network_client);
 
-        std::shared_ptr<messaging::OverlayMessage> rsa_encrypt_message(const int caller_id, const std::shared_ptr<messaging::OverlayMessage>& message) override;
-        std::shared_ptr<messaging::OverlayMessage> rsa_decrypt_message(const int caller_id, const std::shared_ptr<messaging::OverlayMessage>& message) override;
-        std::shared_ptr<messaging::MessageBody> rsa_encrypt_value(const std::shared_ptr<messaging::ValueContribution>& value) override;
-        std::shared_ptr<messaging::ValueContribution> rsa_decrypt_value(const std::shared_ptr<messaging::MessageBody>& value) override;
-        void rsa_sign_value(const int caller_id, const messaging::ValueTuple& value, uint8_t (&signature)[util::RSA_SIGNATURE_SIZE]) override;
-        bool rsa_verify_value(const int caller_id, const messaging::ValueTuple& value, const uint8_t (&signature)[util::RSA_SIGNATURE_SIZE]) override;
+        std::shared_ptr<messaging::OverlayMessage> rsa_encrypt_message(const int caller_id, const std::shared_ptr<messaging::OverlayMessage>& message);
+        std::shared_ptr<messaging::OverlayMessage> rsa_decrypt_message(const int caller_id, const std::shared_ptr<messaging::OverlayMessage>& message);
+        std::shared_ptr<messaging::MessageBody> rsa_encrypt_value(const int caller_id, const std::shared_ptr<messaging::ValueContribution>& value);
+        std::shared_ptr<messaging::ValueContribution> rsa_decrypt_value(const int caller_id, const std::shared_ptr<messaging::MessageBody>& value);
+        void rsa_sign_value(const int caller_id, const messaging::ValueTuple& value, util::SignatureArray& signature);
+        bool rsa_verify_value(const int caller_id, const messaging::ValueTuple& value, const util::SignatureArray& signature);
         virtual ~SimCrypto();
 };
 

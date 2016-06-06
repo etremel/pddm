@@ -22,6 +22,13 @@ CryptoLibraryBuilderFunc crypto_library_builder(SimCrypto& crypto_instance) {
     };
 }
 
+ std::function<CryptoLibrary_t (UtilityClient&)> crypto_library_builder_utility(SimCrypto& crypto_instance) {
+     return [&crypto_instance](UtilityClient& client) {
+         return SimCryptoWrapper(crypto_instance, -1);
+     };
+ }
+
+
 } /* namespace simulation */
 } /* namespace psm */
 
