@@ -82,6 +82,34 @@ void UtilityClient::start_queries(const std::list<std::shared_ptr<messaging::Que
 }
 
 void UtilityClient::end_query() {
+    shared_ptr<AggregationMessageValue> query_result;
+    if(query_protocol == QueryProtocol::BFT) {
+        for (const auto& result : query_results) {
+            //Is this the right way to iterate through a multiset and find out the count of each element?
+            if(query_results.count(result) >= ProtocolState_t::FAILURES_TOLERATED + 1) {
+                query_result = result->get_body();
+                break;
+            }
+        }
+    } else {
+        int most_contributors = 0;
+        for (const auto& result : query_results) {
+            if(result->get_num_contributors() > most_contributors) {
+                query_result = result->get_body();
+            }
+        }
+    }
+    query_results.clear();
+    if(all_query_results.size() < query_num) {
+        all_query_results.resize(query_num+1);
+    }
+    all_query_results[query_num] = query_result;
+    query_finished = true;
+    if(!pending_batch_queries.empty()) {
+        auto next_query = pending_batch_queries.top();
+        pending_batch_queries.pop();
+        start_query(next_query);
+    }
 }
 
 } /* namespace psm */
