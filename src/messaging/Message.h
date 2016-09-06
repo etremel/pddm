@@ -1,7 +1,8 @@
 #pragma once
 
-#include <memory>;
-#include "MessageBody.h";
+#include <memory>
+
+#include "MessageBody.h"
 
 namespace pddm {
 

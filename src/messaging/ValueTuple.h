@@ -7,6 +7,10 @@
 
 #pragma once
 
+#include "MessageBody.h"
+#include "../util/Hash.h"
+#include "../FixedPoint_t.h"
+
 namespace pddm {
 
 namespace messaging {
@@ -15,18 +19,20 @@ struct ValueTuple : public MessageBody {
         int query_num;
         std::vector<FixedPoint_t> value;
         std::vector<int> proxies;
+        //Member-by-member constructor should do the obvious thing
+        ValueTuple(const int query_num, const std::vector<FixedPoint_t>& value, const std::vector<int>& proxies) :
+            query_num(query_num), value(value), proxies(proxies) {}
+//        ValueTuple(const ValueTuple&) = default;
+//        ValueTuple(ValueTuple&&) = default;
+        //Equality operator should do the obvious thing.
+        inline bool operator==(const MessageBody& _rhs) const {
+            if (auto* rhs = dynamic_cast<const ValueTuple*>(&_rhs))
+                return this->query_num == rhs->query_num
+                        && this->value == rhs->value
+                        && this->proxies == rhs->proxies;
+            else return false;
+        }
 };
-
-//Equality operator should do the obvious thing.
-inline bool operator==(const ValueTuple& lhs, const ValueTuple& rhs) {
-    return lhs.query_num == rhs.query_num
-            && lhs.value == rhs.value
-            && lhs.proxies == rhs.proxies;
-}
-
-inline bool operator!=(const ValueTuple& lhs, const ValueTuple& rhs) {
-    return !(lhs == rhs);
-}
 
 }  // namespace messaging
 
@@ -37,11 +43,11 @@ namespace std {
 template<>
 struct hash<pddm::messaging::ValueTuple> {
         size_t operator()(const pddm::messaging::ValueTuple& input) const {
-            const int prime = 31;
+            using pddm::util::hash_combine;
             size_t result = 1;
-            result = prime * result + hash(input.query_num);
-            result = prime * result + hash(input.value);
-            result = prime * result + hash(input.proxies);
+            hash_combine(result, input.query_num);
+            hash_combine(result, input.value);
+            hash_combine(result, input.proxies);
             return result;
         }
 };

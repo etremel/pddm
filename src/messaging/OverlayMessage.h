@@ -17,26 +17,27 @@ namespace messaging {
  * another OverlayMessage if the message is an encrypted onion.
  */
 class OverlayMessage: public MessageBody {
-    public:
-        int query_num;
-        int destination;
-        bool is_encrypted; //In the simulation, this will be a marker for whether we should pretend this message is encrypted
-        std::shared_ptr<MessageBody> body;
-        OverlayMessage(const int query_num, const int dest_id, const std::shared_ptr<MessageBody>& body, bool is_encrypted = false) :
-            query_num(query_num), destination(dest_id), body(body), is_encrypted(is_encrypted) {};
+public:
+    int query_num;
+    int destination;
+    bool is_encrypted; //In the simulation, this will be a marker for whether we should pretend this message is encrypted
+    bool flood; //True if this message should be sent out on every round, regardless of destination
+    std::shared_ptr<MessageBody> body;
+    OverlayMessage(const int query_num, const int dest_id, const std::shared_ptr<MessageBody>& body, bool is_encrypted = false, bool flood = false) :
+        query_num(query_num), destination(dest_id), is_encrypted(is_encrypted), flood(flood), body(body) {};
+    inline bool operator==(const MessageBody& _rhs) const {
+        auto lhs = this;
+        if (auto* rhs = dynamic_cast<const OverlayMessage*>(&_rhs))
+            return lhs->query_num == rhs->query_num
+                    && lhs->destination == rhs->destination
+                    && lhs->is_encrypted == rhs->is_encrypted
+                    && lhs->flood == rhs->flood
+                    && (lhs->body == nullptr ? rhs->body == nullptr :
+                            (rhs->body != nullptr && *lhs->body == *rhs->body));
+        else return false;
+    }
+
 };
-
-inline bool operator==(const OverlayMessage& lhs, const OverlayMessage& rhs) {
-    return lhs.query_num == rhs.query_num
-            && lhs.destination == rhs.destination
-            && lhs.is_encrypted == rhs.is_encrypted
-            && (lhs.body == nullptr ? rhs.body == nullptr :
-                    (rhs.body != nullptr && *lhs.body == *rhs.body));
-}
-
-inline bool operator!=(const OverlayMessage& lhs, const OverlayMessage& rhs) {
-    return !(lhs == rhs);
-}
 
 } /* namespace messaging */
 } /* namespace psm */

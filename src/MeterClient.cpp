@@ -5,10 +5,22 @@
  *      Author: edward
  */
 
+#include <type_traits>
+#include <memory>
+#include <vector>
+
+
 #include "MeterClient.h"
 #include "messaging/QueryRequest.h"
+#include "messaging/OverlayMessage.h"
+#include "messaging/OverlayTransportMessage.h"
+#include "messaging/AggregationMessage.h"
+#include "messaging/SignatureRequest.h"
+#include "messaging/SignatureResponse.h"
+#include "messaging/PingMessage.h"
+#include "util/Overlay.h"
 
-#include <type_traits>
+#include "BftProtocolState.h" //I need to include this even if Configuration is set not to use BftProtocolState :(
 
 using std::shared_ptr;
 using namespace pddm::messaging;
@@ -19,7 +31,7 @@ namespace pddm {
 void MeterClient::set_second_id(const int id) {
     second_id = id;
     has_second_id = true;
-    secondary_protocol_state.emplace(network, crypto_library, timer_library, *this, id);
+    secondary_protocol_state.emplace(network, crypto_library, timer_library, num_meters, id);
 }
 
 
@@ -89,7 +101,6 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::PingMessage>& 
     primary_protocol_state.handle_ping_message(message);
     if(has_second_id)
         secondary_protocol_state->handle_ping_message(message);
-
 }
 
 /**

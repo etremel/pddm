@@ -13,7 +13,9 @@
 #include <cstring>
 
 #include "ValueTuple.h"
+#include "MessageBody.h"
 #include "../util/CryptoLibrary.h"
+#include "../util/Hash.h"
 
 namespace pddm {
 
@@ -26,19 +28,22 @@ namespace messaging {
 struct ValueContribution : public MessageBody {
         ValueTuple value;
         util::SignatureArray signature;
+        ValueContribution(const ValueTuple& value) : value(value) {
+            signature.fill(0);
+        }
+        ValueContribution(const ValueTuple& value, const util::SignatureArray& signature) :
+            value(value), signature(signature) {}
+
+        inline bool operator==(const MessageBody& _rhs) const {
+            if (auto* rhs = dynamic_cast<const ValueContribution*>(&_rhs))
+                return this->value == rhs->value && this->signature == rhs->signature;
+            else return false;
+        }
 };
-
-inline bool operator==(const ValueContribution& lhs, const ValueContribution& rhs) {
-    return lhs.value == rhs.value && memcmp(lhs.signature, rhs.signature, util::RSA_SIGNATURE_SIZE) == 0;
-}
-
-inline bool operator!=(const ValueContribution& lhs, const ValueContribution& rhs) {
-    return !(lhs == rhs);
-}
 
 }  // namespace messaging
 
-}  // namespace psm
+}  // namespace pddm
 
 
 namespace std {
@@ -46,10 +51,9 @@ namespace std {
 template<>
 struct hash<pddm::messaging::ValueContribution> {
         size_t operator()(const pddm::messaging::ValueContribution& input) const {
-            const int prime = 31;
             size_t result = 1;
-            result = prime * result + hash(input.signature);
-            result = prime * result + hash(input.value);
+            pddm::util::hash_combine(result, input.signature);
+            pddm::util::hash_combine(result, input.value);
             return result;
         }
 };

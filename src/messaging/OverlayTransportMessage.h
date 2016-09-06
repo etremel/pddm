@@ -17,9 +17,11 @@ namespace messaging {
 
 class OverlayTransportMessage: public Message {
     public:
+        using body_type = OverlayMessage;
         int sender_round;
         bool is_final_message;
-        OverlayTransportMessage(const int sender_id, const int sender_round, const bool is_final_message, std::shared_ptr<OverlayMessage> wrapped_message) :
+        OverlayTransportMessage(const int sender_id, const int sender_round,
+                const bool is_final_message, std::shared_ptr<OverlayMessage> wrapped_message) :
             Message(sender_id, wrapped_message), sender_round(sender_round), is_final_message(is_final_message) {};
 };
 

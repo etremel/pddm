@@ -7,14 +7,21 @@
 
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <utility>
+
+#include "../messaging/MessageType.h"
 #include "../UtilityNetworkClient.h"
-#include "../UtilityClient.h"
-#include "Network.h"
-#include "../messaging/QueryRequest.h"
-#include "../messaging/SignatureResponse.h"
+
+namespace pddm {
+class UtilityClient;
+}
 
 namespace pddm {
 namespace simulation {
+
+class Network;
 
 class SimUtilityNetworkClient: public UtilityNetworkClient {
         /** Pair associating an untyped (void*) message pointer and its (enum value) actual type. */
@@ -28,7 +35,7 @@ class SimUtilityNetworkClient: public UtilityNetworkClient {
     public:
         SimUtilityNetworkClient(UtilityClient& owning_utility_client, const std::shared_ptr<Network>& network) :
             utility_client(owning_utility_client), network(network) {}
-        virtual ~SimUtilityNetworkClient();
+        virtual ~SimUtilityNetworkClient() = default;
         //Inherited from UtilityNetworkClient
         void send(const std::shared_ptr<messaging::QueryRequest>& message, const int recipient_id);
         void send(const std::shared_ptr<messaging::SignatureResponse>& message, const int recipient_id);
@@ -38,7 +45,7 @@ class SimUtilityNetworkClient: public UtilityNetworkClient {
 
 };
 
-std::function<UtilityNetworkClient_t (UtilityClient&)> utility_network_client_builder(const std::shared_ptr<Network>& network);
+std::function<SimUtilityNetworkClient (UtilityClient&)> utility_network_client_builder(const std::shared_ptr<Network>& network);
 
 
 } /* namespace simulation */

@@ -1,10 +1,3 @@
-/*
- * UtilityClient.h
- *
- *  Created on: May 16, 2016
- *      Author: edward
- */
-
 #pragma once
 
 #include <memory>
@@ -16,6 +9,7 @@
 #include "messaging/SignatureRequest.h"
 #include "messaging/QueryRequest.h"
 #include "util/PointerUtil.h"
+#include "ConfigurationIncludes.h"
 
 namespace pddm {
 
@@ -26,7 +20,13 @@ namespace pddm {
 class UtilityClient {
     private:
         enum class QueryProtocol { BFT, CT, HFT };
-        static constexpr QueryProtocol query_protocol;
+        /* Instead of making three subclasses of UtilityClient, we'll just switch behavior
+         * based on which subclass of ProtocolState we're using. This statically initializes
+         * the value of query_protocol based on which type ProtocolState_t is mapped to. */
+        static constexpr QueryProtocol query_protocol = std::is_same<ProtocolState_t, BftProtocolState>::value ?
+                QueryProtocol::BFT :
+                (std::is_same<ProtocolState_t, HftProtocolState>::value ?
+                        QueryProtocol::HFT : QueryProtocol::CT);
         const int num_meters;
         UtilityNetworkClient_t network;
         CryptoLibrary_t crypto_library;

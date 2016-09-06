@@ -11,17 +11,29 @@
 #include <vector>
 #include <memory>
 #include <random>
+#include <utility>
 #include <functional>
+#include <experimental/optional>
+#include <map>
 
 #include "EventManager.h"
-#include "SimNetworkClient.h"
 #include "../messaging/Message.h"
+#include "../messaging/MessageType.h"
 
 namespace pddm {
+
+template<typename T> using optional_reference = std::experimental::optional<std::reference_wrapper<T>>;
+
 namespace simulation {
+
+class SimNetworkClient;
+class SimUtilityNetworkClient;
 
 class Network {
     private:
+        /** Temporary helper used to initialize the meter_clients vector out-of-order,
+         * since reference_wrapper can't be default-initialized and vector can't have gaps. */
+        std::map<int, std::reference_wrapper<SimNetworkClient>> meter_clients_setup;
         /** Contains a pointer to each meter's SimNetworkClient at the index
          * corresponding to its meter ID. */
         std::vector<std::reference_wrapper<SimNetworkClient>> meter_clients;
@@ -30,11 +42,11 @@ class Network {
         std::vector<bool> failed;
         /** The utility's SimNetworkClient; the utility's ID is -1.
          * Note that this is a reference, but it must be initialized after the
-         * constructor is called, so it has to be wrapped. */
-        std::reference_wrapper<SimUtilityNetworkClient> utility;
+         * constructor is called, so it has to be "optional." */
+        optional_reference<SimUtilityNetworkClient> utility;
         EventManager& event_manager;
         std::mt19937_64 latency_randomness;
-        std::normal_distribution latency_distribution;
+        std::normal_distribution<> latency_distribution;
         int generate_latency();
 
         //Let the simulated network clients reach in here to get the EventManager -
@@ -44,9 +56,11 @@ class Network {
     public:
         Network(EventManager& events_manager) : event_manager(events_manager), latency_distribution(4.0, 1.5) {}
         /** Adds a meter to the simulated network, registered to the given ID. */
-        void connect_meter(const SimNetworkClient& meter_client, const int id);
+        void connect_meter(SimNetworkClient& meter_client, const int id);
         /** Adds the utility to the simulated network */
-        void connect_utility(const SimUtilityNetworkClient& utility);
+        void connect_utility(SimUtilityNetworkClient& utility);
+        /** Finishes installing meters; this must be called after the last call to connect_meter. */
+        void finish_setup();
         /** Sends a stream of messages to a recipient identified by its ID. */
         void send(const std::list<std::pair<messaging::MessageType, std::shared_ptr<void>>>& messages, const int recipient_id);
         /** Marks a meter as "failed" for the duration of this simulation; it will not receive any messages. */

@@ -5,10 +5,15 @@
  *      Author: edward
  */
 
+#include "SimUtilityNetworkClient.h"
+
 #include <memory>
 #include <list>
 
-#include "SimUtilityNetworkClient.h"
+#include "../messaging/AggregationMessage.h"
+#include "../messaging/SignatureRequest.h"
+#include "../UtilityClient.h"
+#include "Network.h"
 
 using std::static_pointer_cast;
 using std::make_pair;
@@ -42,7 +47,7 @@ void SimUtilityNetworkClient::receive_message(const messaging::MessageType& mess
 }
 
 
-std::function<UtilityNetworkClient_t(UtilityClient&)> utility_network_client_builder(const std::shared_ptr<Network>& network) {
+std::function<SimUtilityNetworkClient (UtilityClient&)> utility_network_client_builder(const std::shared_ptr<Network>& network) {
     return [network](UtilityClient& utility_client) {
         SimUtilityNetworkClient network_client(utility_client, network);
         network->connect_utility(network_client);

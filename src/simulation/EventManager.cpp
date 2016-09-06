@@ -40,10 +40,10 @@ void EventManager::run_simulation() {
             if(next == nullptr) { //Both queues were empty
                 done = true;
             } else {
-                if(next->fire_time < simulation_time) {
+                if(next->get_fire_time() < simulation_time) {
                     throw std::runtime_error("Error! Simulation time moved backwards!");
                 }
-                simulation_time = next->fire_time;
+                simulation_time = next->get_fire_time();
                 next->fire();
             }
             //The Event should get cleaned up now, as soon as the local pointer goes out of scope

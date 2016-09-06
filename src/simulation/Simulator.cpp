@@ -5,22 +5,38 @@
  *      Author: edward
  */
 
-#include <memory>
-#include <string>
-#include <set>
-#include <regex>
-#include <list>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-
 #include "Simulator.h"
+
+#include <stddef.h>
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <list>
+#include <map>
+#include <regex>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include <memory>
+
+#include "../Configuration.h"
+#include "../messaging/QueryRequest.h"
+#include "../util/Money.h"
 #include "../util/Overlay.h"
-#include "SimUtilityNetworkClient.h"
-#include "SimCryptoWrapper.h"
+#include "../UtilityClient.h"
+#include "Event.h"
+#include "IncomeLevel.h"
+#include "Meter.h"
+#include "Network.h"
 #include "SimCrypto.h"
+#include "SimCryptoWrapper.h"
+#include "SimNetworkClient.h"
 #include "SimParameters.h"
+#include "SimTimerManager.h"
+#include "SimUtilityNetworkClient.h"
 #include "Timesteps.h"
+#include "../ConfigurationIncludes.h"
 
 using std::string;
 
@@ -47,15 +63,15 @@ void Simulator::read_devices_from_files(const string& device_power_data_file, co
         //The rest of the line is tab-separated numbers representing power usage cycles, followed by the standby load
         //Fortunately, the default delimiter for istream's operator>> is "any whitespace"
         //Unfortunately, the only way to use istream_iterator is to read the whole line, including the standby load, into one vector
-        std::vector<int> mixed_cycle_data(std::istream_iterator<int>(power_data), std::istream_iterator<int>());
+        std::vector<int> mixed_cycle_data{std::istream_iterator<int>{power_data}, std::istream_iterator<int>{}};
         //Take the standby load value off the end of the vector, leaving just the cycle data
-        cur_device.standby_load = FixedPoint_t(mixed_cycle_data.back());
+        cur_device.standby_load = FixedPoint_t{static_cast<long>(mixed_cycle_data.back())};
         mixed_cycle_data.pop_back();
         //Cycle data alternates between load per cycle and minutes per cycle
         cur_device.load_per_cycle.resize(mixed_cycle_data.size()/2);
         cur_device.time_per_cycle.resize(cur_device.load_per_cycle.size());
         for(size_t i = 0; i < mixed_cycle_data.size(); i += 2) {
-            cur_device.load_per_cycle[i/2] = FixedPoint_t(mixed_cycle_data[i]);
+            cur_device.load_per_cycle[i/2] = FixedPoint_t(static_cast<long>(mixed_cycle_data[i]));
             cur_device.time_per_cycle[i/2] = mixed_cycle_data[i+1];
         }
     }
@@ -119,7 +135,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
     //Initialize the utility
     utility_client = std::make_unique<UtilityClient>(modulus, utility_network_client_builder(sim_network),
             crypto_library_builder_utility(*sim_crypto), timer_manager_builder_utility(event_manager));
-    Meter::PriceFunction sim_energy_price = [](const int time_of_day) {
+    PriceFunction sim_energy_price = [](const int time_of_day) {
         if(time_of_day > 17 && time_of_day < 20) {
             return Money(0.0734);
         } else {
@@ -127,7 +143,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
         }
     };
     while(meter_clients.size() < num_homes) {
-        std::discrete_distribution income_distribution({25, 50, 25});
+        std::discrete_distribution<> income_distribution({25, 50, 25});
         int income_choice = income_distribution(random_engine);
         IncomeLevel income_level = income_choice == 0 ? IncomeLevel::POOR :
                 (income_choice == 1 ? IncomeLevel::AVERAGE : IncomeLevel::RICH);
@@ -135,7 +151,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
         std::list<Device> home_devices;
         for(const auto& device_saturation : devices_saturation) {
             //Devices that end in digits have multiple "versions," and only one of them should be in home_devices
-            std::regex ends_in_digits(".*\\d$", std::regex::extended);
+            std::regex ends_in_digits(".*[0-9]$", std::regex::extended);
             if(std::regex_match(device_saturation.first, ends_in_digits)) {
                 std::regex name_prefix(device_saturation.first.substr(0, device_saturation.first.length()-2) + string(".*"), std::regex::extended);
                 if(device_already_picked(home_devices, name_prefix)) {
@@ -150,7 +166,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
             }
             //Otherwise, randomly decide whether to include this device, based on its saturation
             double saturation_as_fraction = device_saturation.second / 100.0;
-            if(std::binomial_distribution(saturation_as_fraction)(random_engine)) {
+            if(std::binomial_distribution<>(saturation_as_fraction)(random_engine)) {
                 home_devices.emplace_back(possible_devices[device_saturation.first]);
             }
         }
@@ -165,11 +181,14 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
     int current_id = meter_clients.size();
     for(int double_id_pointer = 0; double_id_pointer < modulus - meter_clients.size(); ++double_id_pointer) {
         meter_clients[double_id_pointer].set_second_id(current_id);
-        virtual_meter_clients[current_id] = std::ref(meter_clients[double_id_pointer]);
+        virtual_meter_clients.emplace(current_id, std::ref(meter_clients[double_id_pointer]));
         //Ugh, if it wasn't for needing to do this, I wouldn't have to expose MeterClient's NetworkClient.
         sim_network->connect_meter(meter_clients[double_id_pointer].get_network_client(), current_id);
         current_id++;
     }
+
+    sim_network->finish_setup();
+    sim_crypto->finish_setup();
 
 }
 
@@ -182,7 +201,7 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
             }
             if(timestep > 0 && timesteps::minute(timestep) % 60 == 0) {
                 auto test_query = std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 60, 0);
-                event_manager.submit([test_query, &utility_client](){ utility_client->start_query(test_query); },
+                event_manager.submit([test_query, this](){ utility_client->start_query(test_query); },
                         timesteps::millisecond(timestep) + 1);
             }
         }
@@ -209,7 +228,7 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
                     quarter_hour_query_numbers[next_query_num] = query_start_time;
                     queries.emplace_back(std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 15, next_query_num));
                 }
-                event_manager.submit([queries, utility_client](){ utility_client->start_queries(queries); }, query_start_time);
+                event_manager.submit([queries, this](){ utility_client->start_queries(queries); }, query_start_time);
                 query_number += queries.size();
             } else if(timestep > 0 && timesteps::minute(timestep) % 30 == 0) {
                 std::list<std::shared_ptr<QueryRequest>> queries;
@@ -222,13 +241,13 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
                     quarter_hour_query_numbers[next_query_num] = query_start_time;
                     queries.emplace_back(std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 15, next_query_num));
                 }
-                event_manager.submit([queries, utility_client](){ utility_client->start_queries(queries); }, query_start_time);
+                event_manager.submit([queries, this](){ utility_client->start_queries(queries); }, query_start_time);
                 query_number += queries.size();
             } else if(timestep > 0 && timesteps::minute(timestep) % 15 == 0) {
                 if(query_options.count(QueryMode::QUARTER_HOUR_QUERIES) > 0) {
                     quarter_hour_query_numbers[query_number] = query_start_time;
                     auto quarter_hour_query = std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 15, query_number);
-                    event_manager.submit([quarter_hour_query, utility_client](){ utility_client->start_query(quarter_hour_query); }, query_start_time);
+                    event_manager.submit([quarter_hour_query, this](){ utility_client->start_query(quarter_hour_query); }, query_start_time);
                     query_number++;
                 }
             }

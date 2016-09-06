@@ -7,8 +7,11 @@
 
 #pragma once
 #include <cmath>
+#include <vector>
+#include <memory>
 
 #include "ProtocolState.h"
+#include "FixedPoint_t.h"
 #include "util/PointerUtil.h"
 
 namespace pddm {
@@ -22,18 +25,18 @@ class HftProtocolState: public ProtocolState<HftProtocolState> {
         util::unordered_ptr_set<messaging::OverlayMessage> current_flood_messages;
         util::unordered_ptr_set<messaging::OverlayMessage> relay_messages;
     public:
-        HftProtocolState(const NetworkClient_t& network, const CryptoLibrary_t& crypto,
-                const TimerManager_t& timer_library, const MeterClient& meter, const int meter_id) :
-                    ProtocolState(this, network, crypto, timer_library, meter, meter_id),
-                    num_aggregation_groups(FAILURES_TOLERATED + 1),
+        HftProtocolState(NetworkClient_t& network, CryptoLibrary_t& crypto,
+                TimerManager_t& timer_library, const int num_meters, const int meter_id) :
+                    ProtocolState(this, network, crypto, timer_library, num_meters, meter_id, FAILURES_TOLERATED + 1),
                     protocol_phase(HftProtocolPhase::IDLE), gather_start_round(0) {}
-        virtual ~HftProtocolState();
+        HftProtocolState(HftProtocolState&&) = default;
+        virtual ~HftProtocolState() = default;
 
         bool is_in_overlay_phase() const { return protocol_phase == HftProtocolPhase::SCATTER || protocol_phase == HftProtocolPhase::GATHER; }
         bool is_in_aggregate_phase() const { return protocol_phase == HftProtocolPhase::AGGREGATE; }
 
         static void init_failures_tolerated(const int num_meters) {
-            FAILURES_TOLERATED = (int) round(num_meters * 0.1);
+            FAILURES_TOLERATED = (int) std::round(num_meters * 0.1f);
         }
 
     protected:
@@ -41,6 +44,8 @@ class HftProtocolState: public ProtocolState<HftProtocolState> {
         void end_overlay_round_impl();
         void start_query_impl(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data);
         void handle_overlay_message_impl(const std::shared_ptr<messaging::OverlayTransportMessage>& message);
+
+        friend class ProtocolState;
 };
 
 } /* namespace pddm */

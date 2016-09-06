@@ -5,15 +5,21 @@
  *      Author: edward
  */
 
-#include <list>
-#include <set>
-#include <unordered_set>
-#include <functional>
-#include <string>
-#include <stdexcept>
-
 #include "PathFinder.h"
 #include "Overlay.h"
+
+#include <algorithm>
+#include <functional>
+#include <cmath>
+#include <cstddef>
+#include <list>
+#include <map>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 using std::list;
 using std::set;
@@ -41,6 +47,22 @@ inline bool operator!=(const InfectedNode& lhs, const InfectedNode& rhs) {
     return !(lhs == rhs);
 }
 
+} /* namespace util */
+} /* namespace pddm */
+
+//Definition of the hash code for InfectedNode
+namespace std {
+template<>
+struct hash<pddm::util::InfectedNode> {
+        size_t operator()(const pddm::util::InfectedNode& node) const {
+            return node.id;
+        }
+};
+
+} /* namespace std */
+
+namespace pddm {
+namespace util {
 
 std::vector<std::list<int>> find_paths(const int source_id, const std::vector<int>& target_ids, const int num_nodes, const int start_round) {
     set<int> used_nodes(target_ids.begin(), target_ids.end());
@@ -105,7 +127,7 @@ list<int> find_path(const int source, const int target, const int n, const int s
     for (int time = starting_round; time < max_round; time++) {
         std::unordered_set<InfectedNode> newInfectedNodes;
         for(const auto& infectedNode : infected) {
-            InfectedNode endPtNode{gossip_target(infectedNode.id, time, n), time+1, &infectedNode};
+            InfectedNode endPtNode{gossip_target(infectedNode.id, time, n), time+1, const_cast<InfectedNode*>(&infectedNode)};
             //If the endpoint was already used, skip infecting it (note that target nodes are also on the used list)
             if (exclude_nodes.find(endPtNode.id) != exclude_nodes.end() && endPtNode.id != target)
                 continue;
@@ -133,18 +155,6 @@ list<int> find_path(const int source, const int target, const int n, const int s
     throw std::runtime_error(std::string("Failed to find a path from ") + std::to_string(source) + std::string(" to ") + std::to_string(target));
 }
 
-}
-}
-
-//Definition of the hash code for InfectedNode
-namespace std {
-template<>
-struct hash<pddm::util::InfectedNode> {
-        size_t operator()(const pddm::util::InfectedNode& node) const {
-            return node.id;
-        }
-};
-
-}
-
+} /* namespace util */
+} /* namespace pddm */
 

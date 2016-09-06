@@ -11,8 +11,14 @@
 #include <random>
 #include <functional>
 #include <memory>
+#include <string>
+#include <map>
+#include <set>
 
 #include "../MeterClient.h"
+#include "../UtilityClient.h"
+#include "Network.h"
+#include "SimCrypto.h"
 #include "Device.h"
 
 namespace pddm {
@@ -59,7 +65,6 @@ class Simulator {
                 const std::string& device_saturation_data_file);
 
     public:
-        enum class QueryMode { HOUR_QUERIES, HALF_HOUR_QUERIES, QUARTER_HOUR_QUERIES, ONLY_ONE_QUERY };
         Simulator() : event_manager(), sim_network(std::make_shared<Network>(event_manager)), modulus(0), sim_timers(event_manager) {}
         void setup_simulation(int num_homes, const std::string& device_power_data_file,
                 const std::string& device_frequency_data_file, const std::string& device_probability_data_file,

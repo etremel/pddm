@@ -67,7 +67,7 @@ inline constexpr int second_last_group_size(const int num_groups, const int num_
 }
 
 int random_int_exclude(const int min, const int max, const int exclude) {
-    int choice = std::uniform_int_distribution(min, max-1)(random_engine);
+    int choice = std::uniform_int_distribution<>(min, max-1)(random_engine);
     return choice == exclude ? max : choice;
 }
 
@@ -88,7 +88,7 @@ std::vector<int> pick_proxies(const int node_id, const int num_groups, const int
         if(group_begin <= node_id && node_id <= group_end) {
             proxies[group_num] = random_int_exclude(group_begin, group_end, node_id);
         } else {
-            proxies[group_num] = std::uniform_int_distribution(group_begin, group_end)(random_engine);
+            proxies[group_num] = std::uniform_int_distribution<>(group_begin, group_end)(random_engine);
         }
     }
     //Pick a proxy for the second-to-last group
@@ -97,7 +97,7 @@ std::vector<int> pick_proxies(const int node_id, const int num_groups, const int
     if(group_begin <= node_id && node_id <= group_end) {
         proxies[num_groups-2] = random_int_exclude(group_begin, group_end, node_id);
     } else {
-        proxies[num_groups-2] = std::uniform_int_distribution(group_begin, group_end)(random_engine);
+        proxies[num_groups-2] = std::uniform_int_distribution<>(group_begin, group_end)(random_engine);
     }
     //Pick a proxy for the last group
     group_begin = group_end + 1;
@@ -105,7 +105,7 @@ std::vector<int> pick_proxies(const int node_id, const int num_groups, const int
     if(group_begin <= node_id && node_id <= group_end) {
         proxies[num_groups-1] = random_int_exclude(group_begin, group_end, node_id);
     } else {
-        proxies[num_groups-1] = std::uniform_int_distribution(group_begin, group_end)(random_engine);
+        proxies[num_groups-1] = std::uniform_int_distribution<>(group_begin, group_end)(random_engine);
     }
 
     return proxies;

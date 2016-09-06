@@ -7,16 +7,17 @@
 
 #pragma once
 
+#include <memory>
+
 #include "Message.h"
-#include "MessageBody.h"
+#include "StringBody.h"
 
 namespace pddm {
 namespace messaging {
 
-class StringBody : public MessageBody, public std::string {};
-
 class SignatureResponse: public Message {
     public:
+        using body_type = StringBody;
         SignatureResponse(const int sender_id, const std::shared_ptr<StringBody>& encrypted_response) :
             Message(sender_id, encrypted_response) {};
 };

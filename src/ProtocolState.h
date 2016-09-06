@@ -7,25 +7,34 @@
 
 #pragma once
 
-#include <type_traits>
-#include <cmath>
-#include <unordered_set>
 #include <list>
 #include <memory>
+#include <set>
+#include <vector>
 
 #include "Configuration.h"
-#include "messaging/QueryRequest.h"
-#include "messaging/OverlayTransportMessage.h"
-#include "../util/PointerUtil.h"
+#include "FixedPoint_t.h"
+#include "messaging/ValueTuple.h"
+#include "util/PointerUtil.h"
+#include "util/TimerManager.h"
+
+namespace pddm {
+class TreeAggregationState;
+namespace messaging {
+class AggregationMessage;
+class OverlayMessage;
+class OverlayTransportMessage;
+class PingMessage;
+class QueryRequest;
+struct ValueContribution;
+} /* namespace messaging */
+} /* namespace pddm */
 
 namespace pddm {
 
-//Forward declaration because MeterClient is defined in terms of ProtocolState
-class MeterClient;
-
 template<typename Impl>
 class ProtocolState {
-        static_assert(std::is_base_of<ProtocolState, Impl>::value, "Template parameter of ProtocolState was not a subclass of ProtocolState!");
+//        static_assert(std::is_base_of<ProtocolState, Impl>::value, "Template parameter of ProtocolState was not a subclass of ProtocolState!");
     private:
         Impl* impl_this;
         //Methods that must be implemented by the subclass
@@ -40,11 +49,8 @@ class ProtocolState {
         static void require_init_failures_tolerated(const int num_meters) { Impl::init_failures_tolerated(num_meters);}
 
     public:
-        ProtocolState(Impl* subclass_ptr, const NetworkClient_t& network, const CryptoLibrary_t& crypto,
-                const TimerManager_t& timer_library, const MeterClient& meter, const int meter_id) :
-            impl_this(subclass_ptr), network(network), crypto(crypto), timers(timer_library), meter_id(meter_id), num_meters(meter.get_num_meters()),
-            log2n((int) ceil(log2(num_meters))), overlay_round(0), is_last_round(false), round_timeout_timer(-1), ping_response_from_predecessor(false) {}
-        virtual ~ProtocolState();
+
+        virtual ~ProtocolState() = default;
 
         void start_query(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data);
         void handle_overlay_message(const std::shared_ptr<messaging::OverlayTransportMessage>& message);
@@ -67,6 +73,10 @@ class ProtocolState {
         static int FAILURES_TOLERATED;
 
     protected:
+        ProtocolState(Impl* subclass_ptr, NetworkClient_t& network, CryptoLibrary_t& crypto,
+                TimerManager_t& timer_library, const int num_meters, const int meter_id,
+                const int num_aggregation_groups);
+        ProtocolState(ProtocolState&&) = default;
         NetworkClient_t& network;
         CryptoLibrary_t& crypto;
         TimerManager_t& timers;
@@ -86,12 +96,13 @@ class ProtocolState {
          * meter that has failed. */
         std::set<int> failed_meter_ids;
         /** Handle for the timer registered to timeout the round. */
-        int round_timeout_timer;
+        util::timer_id_t round_timeout_timer;
         bool ping_response_from_predecessor;
-        std::list<std::shared_ptr<messaging::OverlayTransportMessage>> future_overlay_messages;
-        std::list<std::shared_ptr<messaging::AggregationMessage>> future_aggregation_messages;
-        std::list<std::shared_ptr<messaging::OverlayMessage>> waiting_messages;
-        std::list<std::shared_ptr<messaging::OverlayMessage>> outgoing_messages;
+        template<typename T> using ptr_list = std::list<std::shared_ptr<T>>;
+        ptr_list<messaging::OverlayTransportMessage> future_overlay_messages;
+        ptr_list<messaging::AggregationMessage> future_aggregation_messages;
+        ptr_list<messaging::OverlayMessage> waiting_messages;
+        ptr_list<messaging::OverlayMessage> outgoing_messages;
 
         std::shared_ptr<messaging::ValueTuple> my_contribution;
         /** This automatically rejects duplicate proxy contributions; it must
@@ -100,7 +111,7 @@ class ProtocolState {
          * (by way of ValueTuple), two meters are allowed to contribute the same
          * measurement (they should have distinct proxy sets). */
         util::unordered_ptr_set<messaging::ValueContribution> proxy_values;
-        TreeAggregationState aggregation_phase_state;
+        std::unique_ptr<TreeAggregationState> aggregation_phase_state;
 
         void handle_round_timeout();
         inline void end_overlay_round() {
@@ -108,6 +119,9 @@ class ProtocolState {
             super_end_overlay_round();
         }
         void super_end_overlay_round();
+
+        void encrypted_multicast_to_proxies(const std::shared_ptr<messaging::ValueContribution>& contribution);
+        void start_aggregate_phase();
 
 
     private:
@@ -117,9 +131,9 @@ class ProtocolState {
 
 //Useless boilerplate to complete the declaration of the static member FAILURES_TOLERATED
 template<typename Impl>
-static int ProtocolState<Impl>::FAILURES_TOLERATED;
+int ProtocolState<Impl>::FAILURES_TOLERATED;
 
-}
+} /* namespace pddm */
 
 #include "ProtocolState_impl.h"
 

@@ -9,12 +9,18 @@ namespace messaging {
  * Necessary because C++ doesn't have "Object" as a common supertype of everything.
  */
 class MessageBody {
+    protected:
+        virtual ~MessageBody() = default;
     public:
-        virtual ~MessageBody() = 0;
+        virtual bool operator==(const MessageBody&) const = 0;
 };
 
+inline bool operator!=(const MessageBody& a, const MessageBody& b){
+    return !(a == b);
 }
-}
+
+} /* namespace messaging */
+} /* namespace pddm */
 
 
 

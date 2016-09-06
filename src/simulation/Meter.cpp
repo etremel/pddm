@@ -5,12 +5,17 @@
  *      Author: edward
  */
 
+#include <algorithm>
 #include <vector>
 #include <string>
+#include <random>
 
 #include "Meter.h"
 #include "Device.h"
+#include "DeviceState.h"
+#include "SimParameters.h"
 #include "Timesteps.h"
+#include "../util/Money.h"
 
 namespace pddm {
 namespace simulation {
@@ -20,21 +25,24 @@ using std::vector;
 using std::make_pair;
 using namespace timesteps;
 
-Meter::Meter(std::list<Device>& owned_devices, const PriceFunction& energy_price_function, const IncomeLevel& income_level) :
+Meter::Meter(const IncomeLevel& income_level, std::list<Device>& owned_devices, const PriceFunction& energy_price_function) :
         energy_price_function(energy_price_function), income_level(income_level), current_timestep(-1),
         consumption(TOTAL_TIMESTEPS), shiftable_consumption(TOTAL_TIMESTEPS), cost(TOTAL_TIMESTEPS) {
     for(auto& device : owned_devices) {
         //Currently, only air conditioners are shiftable (smart thermostats)
         if(device.name.find("conditioner") != string::npos) {
-            shiftable_devices.push_back(make_pair(std::move(device), DeviceState{}));
+            shiftable_devices.emplace_back(std::move(device), DeviceState{});
         } else {
-            nonshiftable_devices.push_back(make_pair(std::move(device), DeviceState{}));
+            nonshiftable_devices.emplace_back(std::move(device), DeviceState{});
         }
     }
 
 }
 
-
+/**
+ * Simulates one timestep of energy usage and updates the Meter's variables
+ * with the results.
+ */
 void Meter::simulate_usage_timestep() {
     current_timestep++;
 
@@ -62,15 +70,140 @@ void Meter::simulate_usage_timestep() {
     }
 }
 
+
+FixedPoint_t Meter::simulate_nonshiftables(int time, const PriceFunction& energy_price) {
+    FixedPoint_t total_consumption;
+    for(auto& device_pair : nonshiftable_devices) {
+        double step_factor = USAGE_TIMESTEP_MIN / 60.0;
+        double hourly_factor;
+        double frequency_factor;
+        if(day(time) % 7 == 5 || day(time % 7 == 6)) {
+            hourly_factor = device_pair.first.weekend_hourly_probability[hour(time) % 24];
+            frequency_factor = device_pair.first.weekend_frequency;
+        } else {
+            hourly_factor = device_pair.first.weekday_hourly_probability[hour(time) % 24];
+            frequency_factor = device_pair.first.weekday_frequency;
+        }
+        //Probability of starting = step_factor * hourly_factor * frequency_factor
+        if(std::bernoulli_distribution{step_factor * hourly_factor * frequency_factor}(random_engine)) {
+            device_pair.second.is_on = true;
+        }
+        if(device_pair.second.is_on) {
+            device_pair.second.start_time = time;
+            total_consumption += run_device(device_pair.first, device_pair.second);
+        }
+        //Regardless of whether device turned on, add its standby usage
+        total_consumption += device_pair.first.standby_load * FixedPoint_t(step_factor);
+    }
+    return total_consumption;
+}
+
+FixedPoint_t Meter::simulate_shiftables(int time, const PriceFunction& energy_price) {
+    FixedPoint_t total_consumption;
+    for(auto& device_pair : shiftable_devices) {
+        if(device_pair.second.scheduled_start_time > -1) {
+            if(!device_pair.second.is_on && time >= device_pair.second.scheduled_start_time) {
+                device_pair.second.is_on = true;
+                device_pair.second.start_time = time;
+            }
+        } else {
+            double step_factor = USAGE_TIMESTEP_MIN / 60.0;
+             double hourly_factor;
+             double frequency_factor;
+             if(day(time) % 7 == 5 || day(time % 7 == 6)) {
+                 hourly_factor = device_pair.first.weekend_hourly_probability[hour(time) % 24];
+                 frequency_factor = device_pair.first.weekend_frequency;
+             } else {
+                 hourly_factor = device_pair.first.weekday_hourly_probability[hour(time) % 24];
+                 frequency_factor = device_pair.first.weekday_frequency;
+             }
+             //Probability of starting = step_factor * hourly_factor * frequency_factor
+             if(std::bernoulli_distribution{step_factor * hourly_factor * frequency_factor}(random_engine)) {
+                 device_pair.second.is_on = true;
+             }
+        }
+        if(device_pair.second.is_on) {
+            total_consumption += run_device(device_pair.first, device_pair.second);
+        }
+        //If the device was scheduled and has just completed its run, reset it to non-scheduled
+        //Note that run_device sets is_on back to false if the device finished running during this timestep
+        if(time >= device_pair.second.scheduled_start_time && !device_pair.second.is_on) {
+            device_pair.second.scheduled_start_time = -1;
+        }
+        //Regardless of whether device turned on, add its standby usage
+        total_consumption += device_pair.first.standby_load * FixedPoint_t(USAGE_TIMESTEP_MIN / 60.0);
+    }
+    return total_consumption;
+}
+
+/**
+ * Simulates a single device for a single timestep of time, and returns the
+ * amount of power in watt-hours that device used during the timestep. The
+ * device's state will be updated to reflect the cycle it's in at the end
+ * of the timestep, if it's a device with multiple cycles. The device is
+ * assumed to be on when this method is called ({@code device.isOn == true}),
+ * since it doesn't make sense to call this method on a device that is off.
+ *
+ * @param device A device object
+ * @param device_state The device's associated DeviceState object
+ * @return The number of watt-hours of power consumed by this device in
+ * the simulated timestep
+ */
+FixedPoint_t Meter::run_device(Device& device, DeviceState& device_state) {
+    FixedPoint_t power_consumed; //in watt-hours
+    int time_remaining_in_timestep = USAGE_TIMESTEP_MIN;
+    //Simulate as many device cycles as will fit in one timestep
+    while(time_remaining_in_timestep > 0
+            && device_state.current_cycle_num < device.load_per_cycle.size()) {
+        //The device may already be partway through the current cycle
+        int current_cycle_time = device.time_per_cycle[device_state.current_cycle_num] - device_state.time_in_current_cycle;
+        //Simulate a partial cycle if the current cycle has more time remaining than the timestep
+        int minutes_simulated = std::min(current_cycle_time, time_remaining_in_timestep);
+        power_consumed += device.load_per_cycle[device_state.current_cycle_num] * FixedPoint_t(minutes_simulated / 60.0);
+        device_state.time_in_current_cycle += minutes_simulated;
+        time_remaining_in_timestep -= minutes_simulated;
+        //If we completed simulating a cycle, advance to the next one and check if there's time remaining in the timestep
+        if(device_state.time_in_current_cycle == device.time_per_cycle[device_state.current_cycle_num]) {
+            device_state.current_cycle_num++;
+            device_state.time_in_current_cycle = 0;
+        }
+    }
+    //If the loop stopped because the device finished its last cycle, turn it off
+    if(device_state.current_cycle_num == device.load_per_cycle.size()) {
+        device_state.is_on = false;
+        device_state.current_cycle_num= 0;
+    }
+    return power_consumed;
+}
+
+std::vector<FixedPoint_t> Meter::simulate_projected_usage(const PriceFunction& projected_price, const int time_window) {
+    int window_whole_timesteps = time_window / USAGE_TIMESTEP_MIN;
+    FixedPoint_t window_last_fraction_timestep(time_window / (double) USAGE_TIMESTEP_MIN - window_whole_timesteps);
+    std::vector<FixedPoint_t> projected_usage(window_whole_timesteps + 1);
+    //save states of devices, which will be modified by the "fake" simulation
+    std::vector<std::pair<Device, DeviceState>> shiftable_backup(shiftable_devices);
+    std::vector<std::pair<Device, DeviceState>> nonshiftable_backup(nonshiftable_devices);
+    //simulate the next time_window minutes under the proposed function
+    for(int sim_ts = current_timestep; sim_ts < current_timestep + window_whole_timesteps + 1; ++sim_ts) {
+        projected_usage[sim_ts-current_timestep] = simulate_nonshiftables(sim_ts, projected_price)
+                + simulate_shiftables(sim_ts, projected_price);
+    }
+    projected_usage[window_whole_timesteps] *= window_last_fraction_timestep;
+    //restore saved states
+    std::swap(shiftable_devices, shiftable_backup);
+    std::swap(nonshiftable_devices, nonshiftable_backup);
+    return projected_usage;
+}
+
 FixedPoint_t Meter::measure(const std::vector<FixedPoint_t>& data, const int window_minutes) const {
-    FixedPoint_t windowConsumption;
+    FixedPoint_t window_consumption;
     int windowWholeTimesteps = window_minutes / USAGE_TIMESTEP_MIN;
     FixedPoint_t windowLastFractionTimestep(window_minutes / (double) USAGE_TIMESTEP_MIN - windowWholeTimesteps);
     for(int offset = 0; offset < windowWholeTimesteps; offset++) {
-        windowConsumption += data[current_timestep-offset];
+        window_consumption += data[current_timestep-offset];
     }
-    windowConsumption += (data[current_timestep-windowWholeTimesteps] * windowLastFractionTimestep);
-    return windowConsumption;
+    window_consumption += (data[current_timestep-windowWholeTimesteps] * windowLastFractionTimestep);
+    return window_consumption;
 }
 
 FixedPoint_t Meter::measure_consumption(const int window_minutes) const {
@@ -90,9 +223,8 @@ FixedPoint_t Meter::measure_daily_consumption() const {
     return daily_consumption;
 }
 
-
-MeterBuilderFunc meter_builder(const IncomeLevel& income_level, std::list<Device>& owned_devices,
-        const Meter::PriceFunction& energy_price_function, std::vector<std::reference_wrapper<Meter>>& meter_references) {
+std::function<Meter (MeterClient&)>  meter_builder(const IncomeLevel& income_level, std::list<Device>& owned_devices,
+        const PriceFunction& energy_price_function, std::vector<std::reference_wrapper<Meter>>& meter_references) {
     return [&income_level, &owned_devices, &energy_price_function, &meter_references](MeterClient& client) {
         Meter new_meter(income_level, owned_devices, energy_price_function);
         //Assuming MeterClients are created in strict ID order, this will put a reference to the Meter

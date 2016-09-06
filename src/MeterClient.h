@@ -11,6 +11,17 @@
 #include <memory>
 
 #include "Configuration.h"
+#include "ConfigurationIncludes.h"
+
+namespace pddm {
+namespace messaging {
+class AggregationMessage;
+class OverlayTransportMessage;
+class PingMessage;
+class QueryRequest;
+class SignatureResponse;
+} /* namespace messaging */
+} /* namespace pddm */
 
 namespace pddm {
 
@@ -41,9 +52,10 @@ class MeterClient {
                 const CryptoLibraryBuilderFunc& crypto_library_builder, const TimerManagerBuilderFunc& timer_library_builder) :
                 meter_id(id), num_meters(num_meters), meter(meter_builder(*this)), network(network_builder(*this)),
                 crypto_library(crypto_library_builder(*this)), timer_library(timer_library_builder(*this)), second_id(0),
-                has_second_id(false), primary_protocol_state(network, crypto_library, timer_library, *this, meter_id),
-                secondary_protocol_state(std::experimental::nullopt_t) {};
-        virtual ~MeterClient();
+                has_second_id(false), primary_protocol_state(network, crypto_library, timer_library, num_meters, meter_id),
+                secondary_protocol_state() {};
+        MeterClient(MeterClient&&) = default;
+        virtual ~MeterClient() = default;
 
         void set_second_id(const int id);
 
@@ -61,7 +73,7 @@ class MeterClient {
 
         int get_num_meters() const { return num_meters; }
         //Obscene hack to allow Simulator to connect meters to the simulated Network. There's got to be a better way.
-        const NetworkClient_t& get_network_client() const { return network; }
+        NetworkClient_t& get_network_client() { return network; }
 
     private:
         //A pointer to ProtocolState_t will match exactly one of these, depending on which protocol is being used

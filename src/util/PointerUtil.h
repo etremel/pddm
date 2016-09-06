@@ -22,7 +22,7 @@ namespace util {
 template <typename T>
 struct ptr_greater {
         bool operator()(const std::shared_ptr<T>& lhs, const std::shared_ptr<T>& rhs) const {
-            return *lhs > *rhs;
+            return (lhs == nullptr || rhs == nullptr) ? lhs > rhs : *lhs > *rhs;
         }
 };
 
@@ -33,7 +33,7 @@ struct ptr_greater {
 template<typename T>
 struct ptr_equal {
         bool operator()(const std::shared_ptr<T>& lhs, const std::shared_ptr<T>& rhs) const {
-            return *lhs == *rhs;
+            return (lhs == nullptr || rhs == nullptr) ? lhs == rhs : *lhs == *rhs;
         }
 };
 
@@ -55,7 +55,7 @@ struct ptr_comparator {
 template<typename T>
 struct ptr_hash {
         size_t operator()(const std::shared_ptr<T>& input) const {
-            return std::hash<T>()(*input);
+            return input == nullptr ? std::hash<std::shared_ptr<T>>()(input) : std::hash<T>()(*input);
         }
 };
 

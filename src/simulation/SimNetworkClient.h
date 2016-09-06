@@ -13,6 +13,8 @@
 
 #include "../NetworkClient.h"
 #include "../messaging/MessageType.h"
+#include "EventManager.h"
+#include "Network.h"
 
 namespace pddm {
 //Forward declaration, because MeterClient is defined in terms of NetworkClient
@@ -50,7 +52,7 @@ class SimNetworkClient : public NetworkClient {
 
         class SendFunctor;
 
-        void send(std::unique_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id);
+        void send(std::shared_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id);
 
         void resume_from_busy();
 
@@ -58,7 +60,7 @@ class SimNetworkClient : public NetworkClient {
         SimNetworkClient(MeterClient& owning_meter_client, const std::shared_ptr<Network>& network) :
             meter_client(owning_meter_client), network(network), event_manager(network->event_manager),
             accumulated_delay_micros(0), client_is_busy(false), busy_until_time(0) {};
-        virtual ~SimNetworkClient();
+        virtual ~SimNetworkClient() = default;
         //Inherited from NetworkClient
         void send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id);
         void send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id);
@@ -75,27 +77,27 @@ class SimNetworkClient : public NetworkClient {
 
 
 //How can I get this to work??
-template<messaging::MessageType MType, typename Ret>
-std::shared_ptr<Ret> cast_helper(const std::shared_ptr<void>& message) {
-    using namespace messaging;
-    switch(MType) {
-    case MessageType::OVERLAY:
-        return std::static_pointer_cast<OverlayTransportMessage>(message);
-    case MessageType::AGGREGATION:
-        return std::static_pointer_cast<AggregationMessage>(message);
-    case MessageType::PING:
-        return std::static_pointer_cast<PingMessage>(message);
-    case MessageType::QUERY_REQUEST:
-        return std::static_pointer_cast<QueryRequest>(message);
-    case MessageType::SIGNATURE_REQUEST:
-        return std::static_pointer_cast<SignatureRequest>(message);
-    case MessageType::SIGNATURE_RESPONSE:
-        return std::static_pointer_cast<SignatureResponse>(message);
-    default:
-        return message;
-    }
-}
+//template<messaging::MessageType MType, typename Ret>
+//std::shared_ptr<Ret> cast_helper(const std::shared_ptr<void>& message) {
+//    using namespace messaging;
+//    switch(MType) {
+//    case MessageType::OVERLAY:
+//        return std::static_pointer_cast<OverlayTransportMessage>(message);
+//    case MessageType::AGGREGATION:
+//        return std::static_pointer_cast<AggregationMessage>(message);
+//    case MessageType::PING:
+//        return std::static_pointer_cast<PingMessage>(message);
+//    case MessageType::QUERY_REQUEST:
+//        return std::static_pointer_cast<QueryRequest>(message);
+//    case MessageType::SIGNATURE_REQUEST:
+//        return std::static_pointer_cast<SignatureRequest>(message);
+//    case MessageType::SIGNATURE_RESPONSE:
+//        return std::static_pointer_cast<SignatureResponse>(message);
+//    default:
+//        return message;
+//    }
+//}
 
-NetworkClientBuilderFunc network_client_builder(const std::shared_ptr<Network>& network);
+std::function<SimNetworkClient (MeterClient&)> network_client_builder(const std::shared_ptr<Network>& network);
 } /* namespace simulation */
 } /* namespace psm */

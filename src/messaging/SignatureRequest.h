@@ -11,16 +11,14 @@
 #include <string>
 
 #include "Message.h"
-#include "MessageBody.h"
+#include "StringBody.h"
 
 namespace pddm {
 namespace messaging {
 
-/** Decorates std::string with the MessageBody type so it can be the payload of a Message. */
-class StringBody : public MessageBody, public std::string {};
-
 class SignatureRequest : public Message {
     public:
+        using body_type = StringBody;
         SignatureRequest(const int sender_id, const std::shared_ptr<StringBody>& encrypted_value) :
             Message(sender_id, encrypted_value) {}
 };

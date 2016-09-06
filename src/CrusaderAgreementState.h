@@ -7,11 +7,21 @@
 
 #pragma once
 
-#include <unordered_map>
 #include <memory>
+#include <unordered_map>
+#include <vector>
 #include <cmath>
 
+#include "Configuration.h"
+#include "messaging/SignedValue.h"
+#include "messaging/ValueContribution.h"
 #include "util/PointerUtil.h"
+
+namespace pddm {
+namespace messaging {
+struct AgreementValue;
+} /* namespace messaging */
+} /* namespace pddm */
 
 namespace pddm {
 
@@ -28,7 +38,7 @@ class CrusaderAgreementState {
         const int query_num;
         bool phase_1_finished;
         CryptoLibrary_t& crypto_library;
-        //I want my map keys to ValueContributions, but I have to store them by
+        //I want my map keys to be ValueContributions, but I have to store them by
         //pointer because this map doesn't own them. This mess is the result.
         std::unordered_map<
             std::shared_ptr<messaging::ValueContribution>,
@@ -37,13 +47,13 @@ class CrusaderAgreementState {
             util::ptr_equal<messaging::ValueContribution>
         > signed_proxy_values;
     public:
-        CrusaderAgreementState(const int node_id, const int num_nodes, const int query_num, const CryptoLibrary_t& crypto_library) :
-            node_id(node_id), num_nodes(num_nodes), query_num(query_num), log2n((int) ceil(log2(num_nodes))),
+        CrusaderAgreementState(const int node_id, const int num_nodes, const int query_num, CryptoLibrary_t& crypto_library) :
+            node_id(node_id), num_nodes(num_nodes), log2n((int) std::ceil(std::log2(num_nodes))), query_num(query_num),
             phase_1_finished(false), crypto_library(crypto_library) {}
 
         bool is_phase1_finished() { return phase_1_finished; }
         std::vector<std::shared_ptr<messaging::OverlayMessage>> finish_phase_1(int current_round);
-        std::vector<std::shared_ptr<messaging::ValueContribution>> finish_phase_2();
+        util::unordered_ptr_set<messaging::ValueContribution> finish_phase_2();
         void handle_message(const messaging::OverlayMessage& message);
 
     private:

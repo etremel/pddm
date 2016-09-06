@@ -29,7 +29,8 @@ namespace util {
  *         where each path is a list of node IDs in time order.
  *         This list does not include the source, but does include the target.
  */
-std::vector<std::list<int>> find_paths(const int source_id, const std::vector<int>& target_ids, const int num_nodes, const int start_round);
+std::vector<std::list<int>> find_paths(const int source_id, const std::vector<int>& target_ids,
+        const int num_nodes, const int start_round);
 
 }
 }

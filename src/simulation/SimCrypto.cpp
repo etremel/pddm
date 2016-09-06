@@ -7,55 +7,96 @@
 
 #include "SimCrypto.h"
 
+#include <vector>
+#include <functional>
+#include <memory>
+#include <string>
+
+#include "../messaging/OverlayMessage.h"
+#include "../messaging/ValueTuple.h"
+#include "../messaging/ValueContribution.h"
+#include "../messaging/MessageBody.h"
+#include "../messaging/StringBody.h"
+#include "../messaging/SignedValue.h"
 
 namespace pddm {
 namespace simulation {
 
-using util::RSA_SIGNATURE_SIZE;
-
-void SimCrypto::add_meter(const int meter_id, const SimNetworkClient& meter_network_client) {
-    meter_network_clients[meter_id] = std::ref(meter_network_client);
+void SimCrypto::add_meter(const int meter_id, SimNetworkClient& meter_network_client) {
+    meter_network_clients_setup.emplace(meter_id, std::ref(meter_network_client));
 }
 
 
-std::shared_ptr<messaging::OverlayMessage> SimCrypto::rsa_encrypt_message(const int caller_id,
-        const std::shared_ptr<messaging::OverlayMessage>& message) {
+void SimCrypto::finish_setup() {
+    if(!meter_network_clients.empty())
+        throw std::runtime_error("finish_setup called more than once!");
+    for(int id = 0; id < meter_network_clients_setup.end()->first; ++id) {
+        meter_network_clients.emplace_back(meter_network_clients_setup.at(id));
+    }
+    meter_network_clients_setup.clear();
+}
+
+std::shared_ptr<messaging::OverlayMessage> SimCrypto::rsa_encrypt(const int caller_id,
+        const std::shared_ptr<messaging::OverlayMessage>& message, const int target_meter_id) {
     //The utility has id -1, and doesn't get delayed because it's a datacenter
-    if(caller_id > -1) meter_network_clients[caller_id].get().delay_client(RSA_ENCRYPT_TIME_MICROS);
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_ENCRYPT_TIME_MICROS);
+    message->is_encrypted = true;
     return message;
 }
 
-std::shared_ptr<messaging::OverlayMessage> SimCrypto::rsa_decrypt_message(const int caller_id,
+std::shared_ptr<messaging::OverlayMessage> SimCrypto::rsa_decrypt(const int caller_id,
         const std::shared_ptr<messaging::OverlayMessage>& message) {
-    if(caller_id > -1) meter_network_clients[caller_id].get().delay_client(RSA_DECRYPT_TIME_MICROS);
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_DECRYPT_TIME_MICROS);
+    message->is_encrypted = false;
     return message;
 }
 
-void SimCrypto::rsa_sign_value(const int caller_id, const messaging::ValueTuple& value,
+void SimCrypto::rsa_sign(const int caller_id, const messaging::ValueContribution& value,
         util::SignatureArray& signature) {
-    if(caller_id > -1) meter_network_clients[caller_id].get().delay_client(RSA_SIGN_TIME_MICROS);
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_SIGN_TIME_MICROS);
 }
 
-bool SimCrypto::rsa_verify_value(const int caller_id, const messaging::ValueTuple& value,
-        const util::SignatureArray& signature) {
-    if(caller_id > -1) meter_network_clients[caller_id].get().delay_client(RSA_VERIFY_TIME_MICROS);
+bool SimCrypto::rsa_verify(const int caller_id, const messaging::ValueContribution& value,
+        const util::SignatureArray& signature, const int signer_meter_id) {
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_VERIFY_TIME_MICROS);
     return true;
 }
 
-std::shared_ptr<messaging::MessageBody> SimCrypto::rsa_encrypt_value(const int caller_id,
-        const std::shared_ptr<messaging::ValueContribution>& value) {
-    if(caller_id > -1) meter_network_clients[caller_id].get().delay_client(RSA_ENCRYPT_TIME_MICROS);
-    return value;
+std::shared_ptr<messaging::StringBody> SimCrypto::rsa_encrypt(const int caller_id,
+        const std::shared_ptr<messaging::ValueTuple>& value, const int target_meter_id) {
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_ENCRYPT_TIME_MICROS);
+    return std::make_shared<messaging::StringBody>();
 }
 
-std::shared_ptr<messaging::ValueContribution> SimCrypto::rsa_decrypt_value(const int caller_id,
-        const std::shared_ptr<messaging::MessageBody>& value) {
-    if(caller_id > -1) meter_network_clients[caller_id].get().delay_client(RSA_DECRYPT_TIME_MICROS);
-    //In the simulation, this will be exactly the same ValueContribution that was earlier passed to encrypt_value
-    return std::static_pointer_cast<messaging::ValueContribution>(value);
+//std::shared_ptr<messaging::ValueTuple> SimCrypto::rsa_decrypt(const int caller_id,
+//        const std::shared_ptr<messaging::MessageBody>& value) {
+//    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_DECRYPT_TIME_MICROS);
+//    return std::static_pointer_cast<messaging::ValueTuple>(value);
+//}
+
+std::shared_ptr<messaging::StringBody> SimCrypto::rsa_sign_encrypted(const int caller_id,
+        const std::shared_ptr<messaging::StringBody>& encrypted_message) {
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_SIGN_TIME_MICROS);
+    return encrypted_message;
+}
+
+void SimCrypto::rsa_decrypt_signature(const int caller_id,
+        const std::shared_ptr<std::string>& blinded_signature, util::SignatureArray& signature) {
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_DECRYPT_TIME_MICROS);
+    signature.fill(0);
+}
+
+void SimCrypto::rsa_sign(const int caller_id, const messaging::SignedValue& value, util::SignatureArray& signature) {
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_SIGN_TIME_MICROS);
+    signature.fill(0);
+}
+
+bool SimCrypto::rsa_verify(const int caller_id, const messaging::SignedValue& value, const util::SignatureArray& signature,
+        const int signer_meter_id) {
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_VERIFY_TIME_MICROS);
+    return true;
 }
 
 } /* namespace simulation */
 } /* namespace psm */
-
 

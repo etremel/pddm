@@ -7,9 +7,14 @@
 
 #include <functional>
 #include <memory>
+#include <list>
+#include <cassert>
 
 #include "SimNetworkClient.h"
 #include "../MeterClient.h"
+#include "Network.h"
+#include "../messaging/QueryRequest.h"
+#include "EventManager.h"
 
 namespace pddm {
 namespace simulation {
@@ -19,39 +24,28 @@ using std::list;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::make_unique;
+using std::make_shared;
 
-/**
- * Trivial little helper class to work around the fact that lambdas can't
- * take ownership of unique_ptrs
- */
-class SimNetworkClient::SendFunctor {
-    private:
-        std::unique_ptr<std::list<TypeMessagePair>> messages;
-        std::shared_ptr<Network> network;
-        const int recipient_id;
-    public:
-        SendFunctor(std::unique_ptr<std::list<TypeMessagePair>> messages, const int recipient_id, const std::shared_ptr<Network>& network) :
-            messages(messages), network(network), recipient_id(recipient_id) {};
-        void operator()() { network->send(*messages, recipient_id); }
-};
 
 /**
  * Helper method that bridges between the many typed "send" functions and the
- * simulated Network's untyped interface. Taking the message list as a unique_ptr,
- * which is moved into the send event's lambda, ensures that the list will stay
- * around until the event fires without copying the list.
+ * simulated Network's untyped interface. Taking the message list as a shared_ptr,
+ * which is copied into the send event's lambda, ensures that the list will stay
+ * around until the event fires without copying the list. Note that the pointer
+ * isn't really "shared" because this function does not keep any copies of it
+ * (its refcount will always be 1), but unique_ptr doesn't work with std::function.
  * @param untyped_messages A pointer to a list of (type, pointer-to-message) pairs
  * @param recipient_id
  */
-void SimNetworkClient::send(std::unique_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id) {
+void SimNetworkClient::send(std::shared_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id) {
     if(!client_is_busy) {
         network->send(*untyped_messages, recipient_id);
     } else {
         //Create an event that will send the messages at the end of the current delay
         //(if more delay is accumulated after this send, it shouldn't affect this send)
-        event_manager.submit(SendFunctor(std::move(untyped_messages), network, recipient_id), busy_until_time, false);
-        //Taking the message list as a unique_ptr, which is moved into the lambda, ensures
-        //that the list will stay around until the lambda is executed.
+        event_manager.submit([untyped_messages, recipient_id, this]() {
+            network->send(*untyped_messages, recipient_id);
+        }, busy_until_time, false);
     }
 };
 
@@ -90,7 +84,8 @@ void SimNetworkClient::receive_message(const messaging::MessageType& message_typ
 }
 
 void SimNetworkClient::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage> >& messages, const int recipient_id) {
-    unique_ptr<list<TypeMessagePair>> raw_message_list = make_unique<list<TypeMessagePair>>();
+    //This isn't really "shared," we give up the reference to it and the send event will have the only copy.
+    shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     for(auto& message : messages) {
         raw_message_list->emplace_back(messaging::MessageType::OVERLAY, static_pointer_cast<void>(message));
     }
@@ -98,19 +93,19 @@ void SimNetworkClient::send(const std::list<std::shared_ptr<messaging::OverlayTr
 }
 
 void SimNetworkClient::send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id) {
-    unique_ptr<list<TypeMessagePair>> raw_message_list = make_unique<list<TypeMessagePair>>();
+    shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     raw_message_list->emplace_back(messaging::MessageType::AGGREGATION, static_pointer_cast<void>(message));
     send(std::move(raw_message_list), recipient_id);
 }
 
 void SimNetworkClient::send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) {
-    unique_ptr<list<TypeMessagePair>> raw_message_list = make_unique<list<TypeMessagePair>>();
+    shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     raw_message_list->emplace_back(messaging::MessageType::PING, static_pointer_cast<void>(message));
     send(std::move(raw_message_list), recipient_id);
 }
 
 void SimNetworkClient::send(const std::shared_ptr<messaging::SignatureRequest>& message) {
-    unique_ptr<list<TypeMessagePair>> raw_message_list = make_unique<list<TypeMessagePair>>();
+    shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     raw_message_list->emplace_back(messaging::MessageType::SIGNATURE_REQUEST, static_pointer_cast<void>(message));
     send(std::move(raw_message_list), -1);
 }
@@ -122,8 +117,8 @@ void SimNetworkClient::delay_client(const int delay_time_micros) {
             int delay_ms = accumulated_delay_micros / 1000;
             accumulated_delay_micros = accumulated_delay_micros % 1000;
             client_is_busy = true;
-            busy_until_time = event_manager.simulation_time + delay_ms;
-            busy_done_event = event_manager.submit(std::bind(&SimNetworkClient::resume_from_busy, this), busy_until_time, true);
+            busy_until_time = event_manager.get_current_time() + delay_ms;
+            busy_done_event = event_manager.submit([this](){resume_from_busy();}, busy_until_time, true);
         }
     } else {
         accumulated_delay_micros += delay_time_micros;
@@ -134,14 +129,14 @@ void SimNetworkClient::delay_client(const int delay_time_micros) {
             //Cancel the existing wakeup timer and add a new, longer one
             if(!busy_done_event.expired())
                 busy_done_event.lock()->cancel();
-            busy_done_event = event_manager.submit(std::bind(&SimNetworkClient::resume_from_busy, this), busy_until_time, true);
+            busy_done_event = event_manager.submit([this](){resume_from_busy();}, busy_until_time, true);
         }
     }
 }
 
 void SimNetworkClient::resume_from_busy() {
     //Just in case we didn't cancel an old timeout in time
-    if(event_manager.simulation_time < busy_until_time) {
+    if(event_manager.get_current_time() < busy_until_time) {
         return;
     }
     client_is_busy = false;
@@ -173,7 +168,7 @@ void SimNetworkClient::resume_from_busy() {
     }
 }
 
-NetworkClientBuilderFunc network_client_builder(const std::shared_ptr<Network>& network) {
+std::function<SimNetworkClient (MeterClient&)> network_client_builder(const std::shared_ptr<Network>& network) {
     return [network](MeterClient& meter_client) {
       SimNetworkClient network_client(meter_client, network);
       network->connect_meter(network_client, meter_client.meter_id);

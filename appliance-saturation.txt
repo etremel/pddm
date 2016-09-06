@@ -1,0 +1,21 @@
+Stove and oven 1	96
+Stove and oven 2	96
+Stove and oven 3	96
+Microwave oven	84
+Coffee maker	95 
+Refrigerator	100
+Freezer	87
+Second freezer	20
+Dishwasher	66
+Clothes-washer 1	87
+Clothes-washer 2	87
+Tumble dryer	13 
+Television	96
+Second television	48
+Radio/player	75
+Personal computer	51    
+Printer	41
+Lighting	100   
+Other occasional loads	100
+Central air conditioner	67
+Window air conditioner	22

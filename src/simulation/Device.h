@@ -9,7 +9,7 @@
 
 #include <vector>
 
-#include "../Configuration.h"
+#include "../FixedPoint_t.h"
 
 namespace pddm {
 
@@ -38,8 +38,7 @@ struct Device {
     /** if the customer will turn off this device when they can't afford the energy prices */
     bool disable_to_save_money;
 
-    //Default copy and move constructors, please
-    Device(Device&&) = default;
+    Device() : name(""), standby_load(0.0), weekday_frequency(0), weekend_frequency(0), disable_to_save_money(false) {};
 };
 
 }

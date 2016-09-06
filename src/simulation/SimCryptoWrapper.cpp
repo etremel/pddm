@@ -10,6 +10,9 @@
 #include <functional>
 
 #include "../Configuration.h"
+#include "../ConfigurationIncludes.h"
+#include "../UtilityClient.h"
+#include "../MeterClient.h"
 
 namespace pddm {
 namespace simulation {
@@ -17,7 +20,7 @@ namespace simulation {
 
 CryptoLibraryBuilderFunc crypto_library_builder(SimCrypto& crypto_instance) {
     return [&crypto_instance](MeterClient& client) {
-        crypto_instance.add_meter(client.meter_id, client.network);
+        crypto_instance.add_meter(client.meter_id, client.get_network_client());
         return SimCryptoWrapper(crypto_instance, client.meter_id);
     };
 }
@@ -30,5 +33,5 @@ CryptoLibraryBuilderFunc crypto_library_builder(SimCrypto& crypto_instance) {
 
 
 } /* namespace simulation */
-} /* namespace psm */
+} /* namespace pddm */
 

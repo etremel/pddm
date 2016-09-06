@@ -7,13 +7,21 @@
 
 #pragma once
 
-namespace pddm {
-
+#include <memory>
 #include <set>
 
-//#include "Configuration.h"
-#include "messaging/AggregationMessage.h"
-#include "messaging/QueryRequest.h"
+#include "Configuration.h"
+#include "messaging/ValueContribution.h"
+#include "util/PointerUtil.h"
+
+namespace pddm {
+namespace messaging {
+class AggregationMessage;
+class QueryRequest;
+} /* namespace messaging */
+} /* namespace pddm */
+
+namespace pddm {
 
 /**
  * Helper class representing the state machine for the Aggregation phase of any
@@ -29,11 +37,11 @@ class TreeAggregationState {
         bool initialized;
         int children_received_from;
         int children_needed;
-        messaging::AggregationMessage aggregation_intermediate;
+        std::shared_ptr<messaging::AggregationMessage> aggregation_intermediate;
     public:
         TreeAggregationState(const int node_id, const int num_groups, const int num_meters,
-                const NetworkClient_t& network_client, const messaging::QueryRequest& query_request) :
-            node_id(node_id), num_meters(num_meters), num_groups(num_groups), network(network_client),
+                NetworkClient_t& network_client, const messaging::QueryRequest& query_request) :
+            node_id(node_id), num_groups(num_groups), num_meters(num_meters), network(network_client),
             current_query(query_request), initialized(false), children_received_from(0), children_needed(2) {}
         /** Performs initial setup on the tree aggregation state, such as initializing
          * the local intermediate aggregate value to an appropriate zero.*/
@@ -41,8 +49,8 @@ class TreeAggregationState {
         bool is_initialized() const { return initialized; }
         bool done_receiving_from_children() const;
         void handle_message(const messaging::AggregationMessage& message);
-        void compute_and_send_aggregate(const std::set<messaging::ValueContribution>& accepted_proxy_values);
+        void compute_and_send_aggregate(const util::unordered_ptr_set<messaging::ValueContribution>& accepted_proxy_values);
 };
 
-} /* namespace psm */
+} /* namespace pddm */
 

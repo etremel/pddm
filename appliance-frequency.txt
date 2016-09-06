@@ -1,0 +1,21 @@
+Stove and oven 1	0.56	0.61 
+Stove and oven 2	0.70	0.76 
+Stove and oven 3	0.20	0.21
+Microwave oven	0.98	1.06
+Coffee maker	0.98	1.06
+Refrigerator	40.5	41.3
+Freezer	40.5	41.3
+Second freezer	40.5	41.3
+Dishwasher	1.16	1.26
+Clothes-washer 1	0.31	0.33
+Clothes-washer 2	0.11	0.12
+Tumble dryer	0.28	0.30
+Television	1.95	2.12
+Second television	0.28	0.30
+Radio/player	4.18	4.54
+Personal computer	0.70	0.76
+Printer	0.14	0.15
+Lighting	18.0	19.5 
+Other occasional loads	0.14	0.15
+Central air conditioner	16.0	32.0
+Window air conditioner	8.0	16.0

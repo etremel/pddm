@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <iostream>
+#include <ostream>
 #include <sstream>
 #include <string>
 #include <cmath>
@@ -24,7 +24,7 @@ class Money {
         Money() : amount(0) {}
         Money(const double value) : amount(static_cast<int>(value * scale)) {}
         Money(Money&&) = default;
-        //Default copy constructor and assignment operator will be auto-generated
+        Money(const Money&) = default;
 
         operator double() const {
             return double(amount) / scale;
