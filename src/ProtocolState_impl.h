@@ -19,16 +19,21 @@
 #include "util/PathFinder.h"
 #include "util/Overlay.h"
 #include "TreeAggregationState.h"
+#include "util/OStreams.h"
+#include "spdlog/spdlog.h"
+#include "spdlog/fmt/ostr.h"
 
 namespace pddm {
 
 
 template<typename Impl>
 ProtocolState<Impl>::ProtocolState(Impl* subclass_ptr, NetworkClient_t& network, CryptoLibrary_t& crypto,
-                TimerManager_t& timer_library, const int num_meters, const int meter_id,
-                const int num_aggregation_groups) : impl_this(subclass_ptr), network(network), crypto(crypto), timers(timer_library), meter_id(meter_id),
-            num_meters(num_meters), log2n((int) std::ceil(std::log2(num_meters))), num_aggregation_groups(num_aggregation_groups),
-            overlay_round(0), is_last_round(false), round_timeout_timer(-1), ping_response_from_predecessor(false) {}
+        TimerManager_t& timer_library, const int num_meters, const int meter_id, const int num_aggregation_groups) :
+        logger(spdlog::get("global_logger")), impl_this(subclass_ptr), network(network), crypto(crypto),
+        timers(timer_library), meter_id(meter_id), num_meters(num_meters), log2n((int) std::ceil(std::log2(num_meters))),
+        num_aggregation_groups(num_aggregation_groups), overlay_round(0), is_last_round(false),
+        round_timeout_timer(-1), ping_response_from_predecessor(false) {
+}
 
 template<typename Impl>
 void ProtocolState<Impl>::start_query(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data) {
@@ -41,8 +46,8 @@ void ProtocolState<Impl>::start_query(const messaging::QueryRequest& query_reque
     aggregation_phase_state = std::make_unique<TreeAggregationState>(meter_id, num_aggregation_groups, num_meters,
             network, query_request);
     std::vector<int> proxies = util::pick_proxies(meter_id, num_aggregation_groups, num_meters);
+    logger->trace("Meter {} chose these proxies: {}", meter_id, proxies);
     my_contribution = std::make_shared<messaging::ValueTuple>(query_request.query_number, contributed_data, proxies);
-
     impl_this->start_query_impl(query_request, contributed_data);
 }
 
@@ -100,6 +105,7 @@ void ProtocolState<Impl>::handle_round_timeout() {
         auto ping = std::make_shared<messaging::PingMessage>(meter_id, false);
         network.send(ping, util::gossip_predecessor(meter_id, overlay_round, num_meters));
     } else {
+        logger->debug("Meter {} timed out waiting for an overlay message for round {}", meter_id, overlay_round);
         end_overlay_round();
     }
 }
@@ -207,6 +213,7 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
  */
 template<typename Impl>
 void ProtocolState<Impl>::handle_overlay_message(const std::shared_ptr<messaging::OverlayTransportMessage>& message) {
+    logger->trace("Meter {} received an overlay message: {}", meter_id, *message);
     if(impl_this->is_in_overlay_phase()) {
         timers.cancel_timer(round_timeout_timer);
         round_timeout_timer = timers.register_timer(OVERLAY_ROUND_TIMEOUT, [this](){handle_round_timeout();});

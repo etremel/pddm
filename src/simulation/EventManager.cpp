@@ -28,11 +28,11 @@ void EventManager::run_simulation() {
             }
             shared_ptr<Event> next;
             if(!timeout_queue.empty() &&
-                    (event_queue.empty() || timeout_queue.top() < event_queue.top())) {
+                    (event_queue.empty() || *timeout_queue.top() < *event_queue.top())) {
                 next = std::move(timeout_queue.top());
                 timeout_queue.pop();
             } else if (!event_queue.empty() &&
-                    (timeout_queue.empty() || event_queue.top() < timeout_queue.top())) {
+                    (timeout_queue.empty() || *event_queue.top() < *timeout_queue.top())) {
                 next = std::move(event_queue.top());
                 event_queue.pop();
             }
@@ -58,16 +58,18 @@ void EventManager::run_simulation() {
  * be deleted after it fires.
  * @param action The action to run when the event fires.
  * @param fire_time The time, in milliseconds, at which the event should fire
+ * @param name The human-readable name to give to the event, which helps when
+ * recording and debugging simulation runs. Defaults to an empty string.
  * @param is_timeout Whether the event should be marked as a "timeout" event,
  *        which means it is likely to be cancelled before it fires. Defaults
  *        to false.
  * @return A weak_ptr to the Event that was created and submitted by this method.
  */
-std::weak_ptr<Event> EventManager::submit(const Event::Action& action, const long long fire_time, const bool is_timeout) {
+std::weak_ptr<Event> EventManager::submit(const Event::Action& action, const long long fire_time, const std::string& name, const bool is_timeout) {
     if(fire_time < simulation_time) {
         throw std::runtime_error("Attempted to submit an event in the past!");
     }
-    shared_ptr<Event> event = make_shared<Event>(action, fire_time, is_timeout);
+    shared_ptr<Event> event = make_shared<Event>(action, fire_time, name, is_timeout);
     weak_ptr<Event> event_ptr(event);
     if(is_timeout) {
         //Avoid an unnecessary copy of the pointer; I'd really rather emplace()

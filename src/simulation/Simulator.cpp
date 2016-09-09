@@ -197,19 +197,19 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
     if(query_options.find(QueryMode::ONLY_ONE_QUERY) != query_options.end()) {
         for(int timestep = 0; timestep < TOTAL_TIMESTEPS; ++timestep) {
             for(Meter& meter : meters) {
-                event_manager.submit([&meter](){ meter.simulate_usage_timestep();}, timesteps::millisecond(timestep));
+                event_manager.submit([&meter](){ meter.simulate_usage_timestep();}, timesteps::millisecond(timestep), "Simulate electricity usage timestep");
             }
             if(timestep > 0 && timesteps::minute(timestep) % 60 == 0) {
                 auto test_query = std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 60, 0);
                 event_manager.submit([test_query, this](){ utility_client->start_query(test_query); },
-                        timesteps::millisecond(timestep) + 1);
+                        timesteps::millisecond(timestep) + 1, "Start query from utility");
             }
         }
     } else {
         int query_number = 0;
         for(int timestep = 0; timestep < TOTAL_TIMESTEPS; ++timestep) {
             for(Meter& meter : meters) {
-                event_manager.submit([&meter](){ meter.simulate_usage_timestep();}, timesteps::millisecond(timestep));
+                event_manager.submit([&meter](){ meter.simulate_usage_timestep();}, timesteps::millisecond(timestep), "Simulate electricity usage timestep");
             }
             long query_start_time = timesteps::millisecond(timestep) + 1;
             if(timestep > 0 && timesteps::minute(timestep) % 60 == 0) {
@@ -228,7 +228,7 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
                     quarter_hour_query_numbers[next_query_num] = query_start_time;
                     queries.emplace_back(std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 15, next_query_num));
                 }
-                event_manager.submit([queries, this](){ utility_client->start_queries(queries); }, query_start_time);
+                event_manager.submit([queries, this](){ utility_client->start_queries(queries); }, query_start_time, "Start query batch at utility");
                 query_number += queries.size();
             } else if(timestep > 0 && timesteps::minute(timestep) % 30 == 0) {
                 std::list<std::shared_ptr<QueryRequest>> queries;
@@ -241,13 +241,13 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
                     quarter_hour_query_numbers[next_query_num] = query_start_time;
                     queries.emplace_back(std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 15, next_query_num));
                 }
-                event_manager.submit([queries, this](){ utility_client->start_queries(queries); }, query_start_time);
+                event_manager.submit([queries, this](){ utility_client->start_queries(queries); }, query_start_time, "Start query batch at utility");
                 query_number += queries.size();
             } else if(timestep > 0 && timesteps::minute(timestep) % 15 == 0) {
                 if(query_options.count(QueryMode::QUARTER_HOUR_QUERIES) > 0) {
                     quarter_hour_query_numbers[query_number] = query_start_time;
                     auto quarter_hour_query = std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 15, query_number);
-                    event_manager.submit([quarter_hour_query, this](){ utility_client->start_query(quarter_hour_query); }, query_start_time);
+                    event_manager.submit([quarter_hour_query, this](){ utility_client->start_query(quarter_hour_query); }, query_start_time, "Start quarter-hour query at utility");
                     query_number++;
                 }
             }

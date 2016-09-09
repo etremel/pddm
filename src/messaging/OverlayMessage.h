@@ -8,6 +8,7 @@
 #pragma once
 
 #include "MessageBody.h"
+#include <ostream>
 
 namespace pddm {
 namespace messaging {
@@ -38,6 +39,12 @@ public:
     }
 
 };
+
+inline std::ostream& operator<< (std::ostream& out, const OverlayMessage& message) {
+    out << "{QueryNum=" << message.query_num << "|Destination=" << message.destination;
+//            << "|Body=" << *message.body << "}";
+    return out;
+}
 
 } /* namespace messaging */
 } /* namespace psm */

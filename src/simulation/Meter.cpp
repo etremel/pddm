@@ -229,7 +229,7 @@ std::function<Meter (MeterClient&)>  meter_builder(const IncomeLevel& income_lev
         Meter new_meter(income_level, owned_devices, energy_price_function);
         //Assuming MeterClients are created in strict ID order, this will put a reference to the Meter
         //at the same index as the ID of the new MeterClient that owns it
-        meter_references.push_back(std::ref(new_meter));
+        meter_references.push_back(std::ref(new_meter)); //FIX THIS
         return new_meter;
     };
 }

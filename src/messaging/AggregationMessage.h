@@ -7,13 +7,17 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <iterator>
+#include <ostream>
+#include <unordered_map>
 #include <vector>
-#include <utility>
 
 #include "../FixedPoint_t.h"
-#include "Message.h"
 #include "../util/Hash.h"
+#include "Message.h"
+#include "MessageBody.h"
 
 namespace pddm {
 namespace messaging {
@@ -64,6 +68,15 @@ class AggregationMessageValue : public MessageBody {
         }
 };
 
+inline std::ostream& operator<<(std::ostream& out, const AggregationMessageValue& v) {
+  if ( !v.empty() ) {
+    out << '[';
+    std::copy (v.begin(), v.end(), std::ostream_iterator<FixedPoint_t>(out, ", "));
+    out << "\b\b]";
+  }
+  return out;
+}
+
 class AggregationMessage: public Message {
     private:
         int num_contributors;
@@ -88,6 +101,10 @@ inline bool operator==(const AggregationMessage& lhs, const AggregationMessage& 
 
 inline bool operator!=(const AggregationMessage& lhs, const AggregationMessage& rhs) {
     return !(lhs == rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, const AggregationMessage& m) {
+    return out << *m.get_body() << " | Contributors: " << m.get_num_contributors();
 }
 
 } /* namespace messaging */

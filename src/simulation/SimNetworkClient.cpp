@@ -45,7 +45,7 @@ void SimNetworkClient::send(std::shared_ptr<std::list<TypeMessagePair>> untyped_
         //(if more delay is accumulated after this send, it shouldn't affect this send)
         event_manager.submit([untyped_messages, recipient_id, this]() {
             network->send(*untyped_messages, recipient_id);
-        }, busy_until_time, false);
+        }, busy_until_time, "Send messages after client delay");
     }
 };
 
@@ -118,7 +118,8 @@ void SimNetworkClient::delay_client(const int delay_time_micros) {
             accumulated_delay_micros = accumulated_delay_micros % 1000;
             client_is_busy = true;
             busy_until_time = event_manager.get_current_time() + delay_ms;
-            busy_done_event = event_manager.submit([this](){resume_from_busy();}, busy_until_time, true);
+            busy_done_event = event_manager.submit([this](){resume_from_busy();}, busy_until_time,
+                    "Resume client " + std::to_string(meter_client.meter_id) + " after processing delay", true);
         }
     } else {
         accumulated_delay_micros += delay_time_micros;
@@ -129,7 +130,8 @@ void SimNetworkClient::delay_client(const int delay_time_micros) {
             //Cancel the existing wakeup timer and add a new, longer one
             if(!busy_done_event.expired())
                 busy_done_event.lock()->cancel();
-            busy_done_event = event_manager.submit([this](){resume_from_busy();}, busy_until_time, true);
+            busy_done_event = event_manager.submit([this](){resume_from_busy();}, busy_until_time,
+                    "Resume client " + std::to_string(meter_client.meter_id) + " after processing delay", true);
         }
     }
 }

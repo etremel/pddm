@@ -22,6 +22,11 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    //Set up static global logging framework
+    auto logger = spdlog::rotating_logger_mt("global_logger", "simulation-log", 1024 * 1024 * 500, 3);
+    logger->set_pattern("[%H:%M:%S.%e] [%l] %v");
+    logger->set_level(spdlog::level::trace);
+
     const int num_homes = 197;
     simulation::Simulator sim;
     sim.setup_simulation(num_homes, std::string(argv[1]),

@@ -5,6 +5,8 @@
 
 #include "UtilityClient.h"
 #include "messaging/StringBody.h"
+#include "util/OStreams.h"
+#include "spdlog/fmt/ostr.h"
 
 namespace pddm {
 
@@ -30,7 +32,10 @@ void UtilityClient::handle_message(const std::shared_ptr<messaging::AggregationM
             messages_for_aggregation = (int) std::ceil(std::log2((double) num_meters / (double)(ProtocolState_t::FAILURES_TOLERATED + 1)));
         }
         query_timeout_timer = timer_library.register_timer(messages_for_aggregation * NETWORK_ROUNDTRIP_TIMEOUT,
-                [this](){end_query();});
+                [this](){
+                    logger->debug("Utility timed out waiting for query {}", query_num);
+                    end_query();
+        });
     }
 }
 
@@ -46,6 +51,7 @@ void UtilityClient::start_query(const std::shared_ptr<messaging::QueryRequest>& 
     curr_query_meters_signed.clear();
     query_num = query->query_number;
     query_results.clear();
+    logger->info("Starting query {}", query_num);
     for(int meter_id = 0; meter_id < num_meters; ++meter_id) {
         network.send(query, meter_id);
     }
@@ -61,7 +67,10 @@ void UtilityClient::start_query(const std::shared_ptr<messaging::QueryRequest>& 
         rounds_for_query = 2 * ProtocolState_t::FAILURES_TOLERATED + 4 * log2n + 2
                 + (int) std::ceil(std::log2(num_meters / (double)(ProtocolState_t::FAILURES_TOLERATED + 1)));
     }
-    query_timeout_timer = timer_library.register_timer(rounds_for_query * NETWORK_ROUNDTRIP_TIMEOUT, [this](){end_query();});
+    query_timeout_timer = timer_library.register_timer(rounds_for_query * NETWORK_ROUNDTRIP_TIMEOUT, [this](){
+        logger->debug("Utility timed out waiting for query {}", query_num);
+        end_query();
+    });
 }
 
 /**
@@ -85,6 +94,7 @@ void UtilityClient::end_query() {
     shared_ptr<AggregationMessageValue> query_result;
     if(query_protocol == QueryProtocol::BFT) {
         for (const auto& result : query_results) {
+            logger->debug("Utility results: {}", query_results);
             //Is this the right way to iterate through a multiset and find out the count of each element?
             if(query_results.count(result) >= ProtocolState_t::FAILURES_TOLERATED + 1) {
                 query_result = result->get_body();
@@ -100,10 +110,11 @@ void UtilityClient::end_query() {
         }
     }
     query_results.clear();
-    if(all_query_results.size() < query_num) {
+    if(all_query_results.size() <= query_num) {
         all_query_results.resize(query_num+1);
     }
     all_query_results[query_num] = query_result;
+    logger->info("Query {} finished, result was {}", query_num, query_result);
     query_finished = true;
     if(!pending_batch_queries.empty()) {
         auto next_query = pending_batch_queries.top();

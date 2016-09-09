@@ -11,6 +11,7 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include <string>
 
 #include "Event.h"
 #include "../util/PointerUtil.h"
@@ -33,7 +34,7 @@ class EventManager {
          * there are no more events, or a terminal event is encountered. */
         void run_simulation();
         /** Submits a new event to the simulator and returns a pointer to the created event. */
-        std::weak_ptr<Event> submit(const Event::Action& action, const long long fire_time, const bool is_timeout = false);
+        std::weak_ptr<Event> submit(const Event::Action& action, const long long fire_time, const std::string& name = "", const bool is_timeout = false);
         long long get_current_time() const { return simulation_time; };
         void reset();
 };

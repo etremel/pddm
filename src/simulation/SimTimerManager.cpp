@@ -5,6 +5,8 @@
  *      Author: edward
  */
 
+#include <string>
+
 #include "SimTimerManager.h"
 
 #include "../MeterClient.h"
@@ -16,7 +18,7 @@ namespace simulation {
 using util::timer_id_t;
 
 timer_id_t SimTimerManager::register_timer(const int delay_ms, std::function<void(void)> callback) {
-    std::weak_ptr<Event> event_ptr = event_manager.submit(callback, event_manager.get_current_time() + delay_ms, true);
+    std::weak_ptr<Event> event_ptr = event_manager.submit(callback, event_manager.get_current_time() + delay_ms, "Timer delayed by " + std::to_string(delay_ms) + " ms", true);
     timer_events[next_id] = event_ptr;
     return next_id++; //Return current value, then increment it for next time
 }

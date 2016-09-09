@@ -7,9 +7,11 @@
 
 #pragma once
 
-#include <functional>
-#include <unordered_set>
+#include <stddef.h>
 #include <memory>
+#include <ostream>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace pddm {
 
@@ -68,6 +70,42 @@ using unordered_ptr_set = std::unordered_set<std::shared_ptr<T>, ptr_hash<T>, pt
  * uses their actual values to compare. */
 template<typename T>
 using unordered_ptr_multiset = std::unordered_multiset<std::shared_ptr<T>, ptr_hash<T>, ptr_equal<T>>;
+
+/**
+ * Stream-output operator overload specialized for pointer-sets; attempts to
+ * dereference each element before calling operator<< on it, or prints "nullptr"
+ * if the element is a null pointer.
+ * @param out The stream to print to
+ * @param s The unordered_ptr_set to print
+ * @return The same stream as {@code out}
+ */
+template <typename T>
+std::ostream& operator<< (std::ostream& out, const unordered_ptr_set<T>& s) {
+  if ( !s.empty() ) {
+    out << '[';
+    for(const auto& ptr : s) {
+        out << (ptr == nullptr ? "nullptr" : *ptr) << ", ";
+    }
+    out << "\b\b]";
+  }
+  return out;
+}
+
+template <typename T>
+std::ostream& operator<< (std::ostream& out, const unordered_ptr_multiset<T>& s) {
+  if ( !s.empty() ) {
+    out << '[';
+    for(const auto& ptr : s) {
+        if(ptr == nullptr)
+            out << "nullptr";
+        else
+            out << *ptr;
+        out << ", ";
+    }
+    out << "\b\b]";
+  }
+  return out;
+}
 
 }
 

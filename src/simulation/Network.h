@@ -19,6 +19,7 @@
 #include "EventManager.h"
 #include "../messaging/Message.h"
 #include "../messaging/MessageType.h"
+#include "spdlog/spdlog.h"
 
 namespace pddm {
 
@@ -31,6 +32,7 @@ class SimUtilityNetworkClient;
 
 class Network {
     private:
+        std::shared_ptr<spdlog::logger> logger;
         /** Temporary helper used to initialize the meter_clients vector out-of-order,
          * since reference_wrapper can't be default-initialized and vector can't have gaps. */
         std::map<int, std::reference_wrapper<SimNetworkClient>> meter_clients_setup;
@@ -54,7 +56,7 @@ class Network {
         friend class SimNetworkClient;
 
     public:
-        Network(EventManager& events_manager) : event_manager(events_manager), latency_distribution(4.0, 1.5) {}
+        Network(EventManager& events_manager) : logger(spdlog::get("global_logger")), event_manager(events_manager), latency_distribution(4.0, 1.5) {}
         /** Adds a meter to the simulated network, registered to the given ID. */
         void connect_meter(SimNetworkClient& meter_client, const int id);
         /** Adds the utility to the simulated network */

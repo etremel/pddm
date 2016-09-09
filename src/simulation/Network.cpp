@@ -61,7 +61,8 @@ void Network::send(const std::list<std::pair<messaging::MessageType, std::shared
             for(const auto& message_pair : messages) {
                 utility->get().receive_message(message_pair.first, message_pair.second);
             }
-        }, event_manager.get_current_time() + generate_latency());
+        }, event_manager.get_current_time() + generate_latency(),
+        "Deliver messages to utility");
         return;
     }
 
@@ -69,14 +70,17 @@ void Network::send(const std::list<std::pair<messaging::MessageType, std::shared
         if(failed[recipient_id]) {
             //TODO: create some send error event for meters that failed
         } else {
+            auto arrival_time = event_manager.get_current_time() + generate_latency();
+            logger->trace("Sending {} messages to meter {} with latency {}, to arrive at {}", messages.size(), recipient_id, arrival_time-event_manager.get_current_time(), arrival_time);
             event_manager.submit([this, messages, recipient_id](){
                 for(const auto& message_pair : messages) {
                     meter_clients[recipient_id].get().receive_message(message_pair.first, message_pair.second);
                 }
-            }, event_manager.get_current_time() + generate_latency());
+            }, arrival_time, "Deliver messages to " + std::to_string(recipient_id));
         }
     } else {
-        throw std::runtime_error(std::string("No meter with id ") + std::to_string(recipient_id));
+        logger->warn("Attempted to send a message to meter with ID {}, but there is no such meter!", recipient_id);
+//        throw std::runtime_error(std::string("No meter with id ") + std::to_string(recipient_id));
     }
 }
 

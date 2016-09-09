@@ -56,6 +56,11 @@ class FixedPoint {
         Base m;
 };
 
+template<typename Base, int PrecisionBits>
+std::ostream& operator<<(std::ostream& out, const FixedPoint<Base, PrecisionBits>& value) {
+    return out << value.toDouble();
+}
+
 } /* namespace util */
 } /* namespace pddm */
 
