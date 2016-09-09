@@ -11,6 +11,7 @@
 #include <tuple>
 #include <cstdint>
 #include <cstring>
+#include <ostream>
 
 #include "ValueTuple.h"
 #include "MessageBody.h"
@@ -40,6 +41,10 @@ struct ValueContribution : public MessageBody {
             else return false;
         }
 };
+
+inline std::ostream& operator<<(std::ostream& stream, const ValueContribution& vc) {
+    return stream << "{ValueContribution: " << vc.value << "}";
+}
 
 }  // namespace messaging
 

@@ -15,6 +15,7 @@
 #include "ProtocolState.h"
 #include "FixedPoint_t.h"
 #include "ConfigurationIncludes.h"
+#include "spdlog/spdlog.h"
 
 namespace pddm {
 
@@ -22,6 +23,7 @@ enum class CtProtocolPhase { IDLE, SHUFFLE, ECHO, AGGREGATE };
 
 class CtProtocolState: public ProtocolState<CtProtocolState> {
     private:
+        std::shared_ptr<spdlog::logger> logger;
         int echo_start_round;
         CtProtocolPhase protocol_phase;
         void handle_echo_phase_message(const messaging::OverlayMessage& message);
@@ -31,7 +33,9 @@ class CtProtocolState: public ProtocolState<CtProtocolState> {
         CtProtocolState(NetworkClient_t& network, CryptoLibrary_t& crypto, TimerManager_t& timer_library,
                 const int num_meters, const int meter_id) :
             ProtocolState(this, network, crypto, timer_library, num_meters, meter_id, FAILURES_TOLERATED + 1),
-            echo_start_round(0), protocol_phase(CtProtocolPhase::IDLE) {};
+            logger(spdlog::get("global_logger")),
+            echo_start_round(0),
+            protocol_phase(CtProtocolPhase::IDLE) {};
         CtProtocolState(CtProtocolState&&) = default;
         virtual ~CtProtocolState() = default;
 

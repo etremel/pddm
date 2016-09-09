@@ -14,6 +14,7 @@
 #include "messaging/QueryRequest.h"
 #include "messaging/OnionBuilder.h"
 #include "util/PathFinder.h"
+#include "spdlog/fmt/ostr.h"
 
 namespace pddm {
 
@@ -62,28 +63,32 @@ void CtProtocolState::handle_overlay_message_impl(const std::shared_ptr<messagin
     }
 }
 
-void CtProtocolState::handle_echo_phase_message(const messaging::OverlayMessage& message) {
-    if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution>(message.body)) {
-        if(contribution->value.query_num == my_contribution->query_num) {
-            proxy_values.emplace(contribution);
-        } else {
-            //Log warning
-        }
-    } else if(message.body != nullptr) {
-        //Log warning
-    }
-}
 
 void CtProtocolState::handle_shuffle_phase_message(const messaging::OverlayMessage& message) {
     //Drop messages that are received in the wrong phase (i.e. not ValueContributions) or have the wrong round number
     if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution>(message.body)) {
         if(contribution->value.query_num == my_contribution->query_num) {
+            logger->trace("Meter {} received proxy value: {}", meter_id, *contribution);
             proxy_values.emplace(contribution);
         } else {
-            //Log warning
+            logger->warn("Meter {} rejected a proxy value because it had the wrong query number: {}", meter_id, *contribution);
         }
     } else if(message.body != nullptr) {
-        //Log warning
+        logger->warn("Meter {} rejected a message because it was not a ValueContribution: {}", meter_id, message);
+    }
+}
+
+void CtProtocolState::handle_echo_phase_message(const messaging::OverlayMessage& message) {
+    if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution>(message.body)) {
+        if(contribution->value.query_num == my_contribution->query_num) {
+            logger->trace("Meter {} received echoed proxy value in round {}: {}", meter_id, overlay_round, *contribution);
+            proxy_values.emplace(contribution);
+        } else {
+            logger->warn("Meter {} rejected a proxy value: {}", meter_id, *contribution);
+
+        }
+    } else if(message.body != nullptr) {
+        logger->warn("Meter {} rejected a message because it was not a ValueContribution: {}", meter_id, message);
     }
 }
 
@@ -91,6 +96,7 @@ void CtProtocolState::send_aggregate_if_done() {
     if(aggregation_phase_state->done_receiving_from_children()) {
         aggregation_phase_state->compute_and_send_aggregate(proxy_values);
         protocol_phase = CtProtocolPhase::IDLE;
+        logger->debug("Meter {} is finished with Aggregate", meter_id);
     }
 }
 
@@ -98,6 +104,7 @@ void CtProtocolState::end_overlay_round_impl() {
     //Determine if the Shuffle phase has ended
     if(protocol_phase == CtProtocolPhase::SHUFFLE
             && overlay_round >= FAILURES_TOLERATED + 2 * log2n + 1) {
+        logger->debug("Meter {} is finished with Shuffle", meter_id);
         //Multicast each received value to its other proxies
         for(const auto& proxy_value : proxy_values) {
             //Remove this meter's ID from the list of proxies
@@ -118,7 +125,7 @@ void CtProtocolState::end_overlay_round_impl() {
     //Determine if the Echo phase has ended
     else if (protocol_phase == CtProtocolPhase::ECHO
             && overlay_round >= echo_start_round + FAILURES_TOLERATED + 2 * log2n + 1) {
-
+        logger->debug("Meter {} is finished with Echo", meter_id);
         //Start the Aggregate phase
         protocol_phase = CtProtocolPhase::AGGREGATE;
         start_aggregate_phase();

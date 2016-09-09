@@ -63,6 +63,7 @@ template<typename Impl>
 void ProtocolState<Impl>::encrypted_multicast_to_proxies(const std::shared_ptr<messaging::ValueContribution>& contribution) {
     //Find independent paths starting at round 0
     auto proxy_paths = util::find_paths(meter_id, contribution->value.proxies, num_meters, 0);
+    logger->trace("Meter {} picked these proxy paths: {}", meter_id, proxy_paths);
     for(const auto& proxy_path : proxy_paths) {
         //Create an encrypted onion for this path and send it
         outgoing_messages.emplace_back(messaging::build_encrypted_onion(proxy_path,

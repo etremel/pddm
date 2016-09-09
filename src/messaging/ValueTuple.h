@@ -7,8 +7,12 @@
 
 #pragma once
 
+#include <ostream>
+#include <vector>
+
 #include "MessageBody.h"
 #include "../util/Hash.h"
+#include "../util/OStreams.h"
 #include "../FixedPoint_t.h"
 
 namespace pddm {
@@ -33,6 +37,10 @@ struct ValueTuple : public MessageBody {
             else return false;
         }
 };
+
+inline std::ostream& operator<<(std::ostream& stream, const ValueTuple& tuple) {
+    return stream << "(" << tuple.query_num << ", " << tuple.value << ", " << tuple.proxies << ")";
+}
 
 }  // namespace messaging
 
