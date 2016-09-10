@@ -7,8 +7,9 @@
 
 #pragma once
 
-#include "MessageBody.h"
 #include <ostream>
+#include "MessageBody.h"
+#include "../util/Hash.h"
 
 namespace pddm {
 namespace messaging {
@@ -24,8 +25,8 @@ public:
     bool is_encrypted; //In the simulation, this will be a marker for whether we should pretend this message is encrypted
     bool flood; //True if this message should be sent out on every round, regardless of destination
     std::shared_ptr<MessageBody> body;
-    OverlayMessage(const int query_num, const int dest_id, const std::shared_ptr<MessageBody>& body, bool is_encrypted = false, bool flood = false) :
-        query_num(query_num), destination(dest_id), is_encrypted(is_encrypted), flood(flood), body(body) {};
+    OverlayMessage(const int query_num, const int dest_id, const std::shared_ptr<MessageBody>& body, bool flood = false) :
+        query_num(query_num), destination(dest_id), is_encrypted(false), flood(flood), body(body) {};
     virtual ~OverlayMessage() = default;
 
     inline bool operator==(const MessageBody& _rhs) const {
@@ -50,3 +51,23 @@ inline std::ostream& operator<< (std::ostream& out, const OverlayMessage& messag
 
 } /* namespace messaging */
 } /* namespace psm */
+
+
+namespace std {
+
+template<>
+struct hash<pddm::messaging::OverlayMessage> {
+        size_t operator()(const pddm::messaging::OverlayMessage& input) const {
+            using pddm::util::hash_combine;
+
+            size_t result = 1;
+            hash_combine(result, input.query_num);
+            hash_combine(result, input.destination);
+            hash_combine(result, input.is_encrypted);
+            hash_combine(result, input.flood);
+            hash_combine(result, input.body);
+            return result;
+        }
+};
+
+}  // namespace std

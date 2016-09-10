@@ -79,7 +79,6 @@ void CtProtocolState::handle_echo_phase_message(const messaging::OverlayMessage&
             proxy_values.emplace(contribution);
         } else {
             logger->warn("Meter {} rejected a proxy value: {}", meter_id, *contribution);
-
         }
     } else if(message.body != nullptr) {
         logger->warn("Meter {} rejected a message because it was not a ValueContribution: {}", meter_id, message);

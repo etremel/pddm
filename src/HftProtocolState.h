@@ -9,6 +9,7 @@
 #include <cmath>
 #include <vector>
 #include <memory>
+#include <spdlog/spdlog.h>
 
 #include "ProtocolState.h"
 #include "FixedPoint_t.h"
@@ -20,15 +21,21 @@ enum class HftProtocolPhase { IDLE, SCATTER, GATHER, AGGREGATE };
 
 class HftProtocolState: public ProtocolState<HftProtocolState> {
     private:
+        std::shared_ptr<spdlog::logger> logger;
         HftProtocolPhase protocol_phase;
         int gather_start_round;
         util::unordered_ptr_set<messaging::OverlayMessage> current_flood_messages;
         util::unordered_ptr_set<messaging::OverlayMessage> relay_messages;
+        std::mt19937 random_engine;
+        void handle_scatter_phase_message(const messaging::OverlayMessage& message);
+        void handle_gather_phase_message(const messaging::OverlayMessage& message);
     public:
         HftProtocolState(NetworkClient_t& network, CryptoLibrary_t& crypto,
                 TimerManager_t& timer_library, const int num_meters, const int meter_id) :
                     ProtocolState(this, network, crypto, timer_library, num_meters, meter_id, FAILURES_TOLERATED + 1),
-                    protocol_phase(HftProtocolPhase::IDLE), gather_start_round(0) {}
+                    logger(spdlog::get("global_logger")),
+                    protocol_phase(HftProtocolPhase::IDLE),
+                    gather_start_round(0) {}
         HftProtocolState(HftProtocolState&&) = default;
         virtual ~HftProtocolState() = default;
 

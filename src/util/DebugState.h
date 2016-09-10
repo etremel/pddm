@@ -21,6 +21,8 @@ struct DebugState {
         int num_finished_echo;
         int num_finished_agreement;
         int num_finished_aggregate;
+        int num_finished_scatter;
+        int num_finished_gather;
 };
 
 DebugState& debug_state();
@@ -30,11 +32,19 @@ inline void init_debug_state() {
     debug_state().num_finished_echo = 0;
     debug_state().num_finished_agreement = 0;
     debug_state().num_finished_aggregate = 0;
+    debug_state().num_finished_scatter = 0;
+    debug_state().num_finished_gather = 0;
 }
 
 inline void print_shuffle_status(const std::shared_ptr<spdlog::logger>& logger, const int num_meters) {
     if(debug_state().num_finished_shuffle == num_meters - simulation::METER_FAILURES_PER_QUERY) {
         logger->debug("All meters are finished with Shuffle");
+    }
+}
+
+inline void print_scatter_status(const std::shared_ptr<spdlog::logger>& logger, const int num_meters) {
+    if(debug_state().num_finished_scatter == num_meters - simulation::METER_FAILURES_PER_QUERY) {
+        logger->debug("All meters are finished with Scatter");
     }
 }
 
@@ -44,6 +54,15 @@ inline void print_echo_status(const std::shared_ptr<spdlog::logger>& logger, con
     }
     if(debug_state().num_finished_echo == num_meters - simulation::METER_FAILURES_PER_QUERY) {
         logger->debug("All meters are finished with Echo");
+    }
+}
+
+inline void print_gather_status(const std::shared_ptr<spdlog::logger>& logger, const int meter_id, const int num_meters) {
+    if(debug_state().num_finished_scatter < num_meters - simulation::METER_FAILURES_PER_QUERY) {
+        logger->warn("Meter {} finished with Gather, but {} meters are still in Scatter phase!", meter_id, num_meters - debug_state().num_finished_shuffle - simulation::METER_FAILURES_PER_QUERY);
+    }
+    if(debug_state().num_finished_gather == num_meters - simulation::METER_FAILURES_PER_QUERY) {
+        logger->debug("All meters are finished with Gather");
     }
 }
 
