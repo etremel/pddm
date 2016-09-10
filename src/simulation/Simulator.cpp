@@ -142,7 +142,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
             return Money(0.0612);
         }
     };
-    while(meter_clients.size() < num_homes) {
+    while((int) meter_clients.size() < num_homes) {
         std::discrete_distribution<> income_distribution({25, 50, 25});
         int income_choice = income_distribution(random_engine);
         IncomeLevel income_level = income_choice == 0 ? IncomeLevel::POOR :
@@ -170,20 +170,21 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
                 home_devices.emplace_back(possible_devices[device_saturation.first]);
             }
         }
-        //Construct a MeterClient by adding it to the vector
-        //Note that meter_builder will also put a reference to the constructed Meter at the back of meters
+        //First construct a meter and keep a pointer to it in meters, then
+        //construct a MeterClient for that meter (by emplacing it in the vector)
         int next_id = meter_clients.size();
-        meter_clients.emplace_back(next_id, modulus, meter_builder(income_level, home_devices, sim_energy_price, meters),
-                network_client_builder(sim_network), crypto_library_builder(*sim_crypto),
-                timer_manager_builder(event_manager));
+        std::shared_ptr<Meter> new_meter = std::make_shared<Meter>(income_level, home_devices, sim_energy_price);
+        meters.push_back(new_meter);
+        meter_clients.emplace_back(std::make_unique<MeterClient>(next_id, modulus, new_meter, network_client_builder(sim_network),
+                crypto_library_builder(*sim_crypto), timer_manager_builder(event_manager)));
     }
     //Assign secondary IDs to some meters
     int current_id = meter_clients.size();
-    for(int double_id_pointer = 0; double_id_pointer < modulus - meter_clients.size(); ++double_id_pointer) {
-        meter_clients[double_id_pointer].set_second_id(current_id);
-        virtual_meter_clients.emplace(current_id, std::ref(meter_clients[double_id_pointer]));
+    for(size_t double_id_pointer = 0; double_id_pointer < modulus - meter_clients.size(); ++double_id_pointer) {
+        meter_clients[double_id_pointer]->set_second_id(current_id);
+        virtual_meter_clients.emplace(current_id, std::ref(*meter_clients[double_id_pointer]));
         //Ugh, if it wasn't for needing to do this, I wouldn't have to expose MeterClient's NetworkClient.
-        sim_network->connect_meter(meter_clients[double_id_pointer].get_network_client(), current_id);
+        sim_network->connect_meter(meter_clients[double_id_pointer]->get_network_client(), current_id);
         current_id++;
     }
 
@@ -196,8 +197,8 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
     using namespace messaging;
     if(query_options.find(QueryMode::ONLY_ONE_QUERY) != query_options.end()) {
         for(int timestep = 0; timestep < TOTAL_TIMESTEPS; ++timestep) {
-            for(Meter& meter : meters) {
-                event_manager.submit([&meter](){ meter.simulate_usage_timestep();}, timesteps::millisecond(timestep), "Simulate electricity usage timestep");
+            for(const auto& meter : meters) {
+                event_manager.submit([meter](){ meter->simulate_usage_timestep();}, timesteps::millisecond(timestep), "Simulate electricity usage timestep");
             }
             if(timestep > 0 && timesteps::minute(timestep) % 60 == 0) {
                 auto test_query = std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 60, 0);
@@ -208,8 +209,8 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
     } else {
         int query_number = 0;
         for(int timestep = 0; timestep < TOTAL_TIMESTEPS; ++timestep) {
-            for(Meter& meter : meters) {
-                event_manager.submit([&meter](){ meter.simulate_usage_timestep();}, timesteps::millisecond(timestep), "Simulate electricity usage timestep");
+            for(const auto& meter : meters) {
+                event_manager.submit([meter](){ meter->simulate_usage_timestep();}, timesteps::millisecond(timestep), "Simulate electricity usage timestep");
             }
             long query_start_time = timesteps::millisecond(timestep) + 1;
             if(timestep > 0 && timesteps::minute(timestep) % 60 == 0) {

@@ -19,8 +19,8 @@ void UtilityClient::handle_message(const std::shared_ptr<messaging::AggregationM
     timer_library.cancel_timer(query_timeout_timer);
     //Check if this was definitely the last result from the query
     if(!query_finished &&
-            ((query_protocol == QueryProtocol::BFT && query_results.size() > 2 * ProtocolState_t::FAILURES_TOLERATED)
-            || (query_protocol != QueryProtocol::BFT && query_results.size() > ProtocolState_t::FAILURES_TOLERATED))) {
+            ((query_protocol == QueryProtocol::BFT && (int)query_results.size() > 2 * ProtocolState_t::FAILURES_TOLERATED)
+            || (query_protocol != QueryProtocol::BFT && (int)query_results.size() > ProtocolState_t::FAILURES_TOLERATED))) {
         end_query();
     }
     //If the query isn't finished, set a new timeout for the next result message
@@ -96,7 +96,7 @@ void UtilityClient::end_query() {
         for (const auto& result : query_results) {
             logger->debug("Utility results: {}", query_results);
             //Is this the right way to iterate through a multiset and find out the count of each element?
-            if(query_results.count(result) >= ProtocolState_t::FAILURES_TOLERATED + 1) {
+            if((int)query_results.count(result) >= ProtocolState_t::FAILURES_TOLERATED + 1) {
                 query_result = result->get_body();
                 break;
             }
@@ -110,11 +110,11 @@ void UtilityClient::end_query() {
         }
     }
     query_results.clear();
-    if(all_query_results.size() <= query_num) {
+    if((int) all_query_results.size() <= query_num) {
         all_query_results.resize(query_num+1);
     }
     all_query_results[query_num] = query_result;
-    logger->info("Query {} finished, result was {}", query_num, query_result);
+    logger->info("Query {} finished, result was {}", query_num, *query_result);
     query_finished = true;
     if(!pending_batch_queries.empty()) {
         auto next_query = pending_batch_queries.top();

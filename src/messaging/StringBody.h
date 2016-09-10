@@ -28,6 +28,7 @@ class StringBody : public MessageBody {
     public:
         template<typename... A>
         StringBody(A&&... args) : data(std::forward<A>(args)...) {}
+        virtual ~StringBody() = default;
         //Boilerplate copy-pasting of std::string interface follows
         bool empty() const noexcept { return data.empty(); }
         std::string::size_type length() const noexcept { return data.length(); }

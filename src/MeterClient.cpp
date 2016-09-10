@@ -31,7 +31,7 @@ namespace pddm {
 void MeterClient::set_second_id(const int id) {
     second_id = id;
     has_second_id = true;
-    secondary_protocol_state.emplace(network, crypto_library, timer_library, num_meters, id);
+    secondary_protocol_state.emplace(network_client, crypto_library, timer_library, num_meters, id);
 }
 
 
@@ -44,7 +44,7 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::AggregationMes
         } else if (message->query_num == primary_protocol_state.get_current_query_num()) {
             primary_protocol_state.buffer_future_message(message);
         } else {
-            //Log warning
+            logger->warn("Meter {} rejected a message from meter {} with the wrong query number: {}", meter_id, message->sender_id, *message);
         }
     } else if (has_second_id &&
             util::aggregation_group_for(message->sender_id, secondary_protocol_state->get_num_aggregation_groups(), num_meters) ==
@@ -54,7 +54,7 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::AggregationMes
         } else if(message->query_num == secondary_protocol_state->get_current_query_num()) {
             secondary_protocol_state->buffer_future_message(message);
         } else {
-            //Log warning
+            logger->warn("Meter {} rejected a message from meter {} with the wrong query number: {}", second_id, message->sender_id, *message);
         }
     }
 }
@@ -66,7 +66,7 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::OverlayTranspo
             //If the message is for a future query, buffer it until I get the query-start message
             primary_protocol_state.buffer_future_message(message);
         } else if (wrapped_message->query_num < primary_protocol_state.get_current_query_num()) {
-            //Log warning
+            logger->warn("Meter {} discarded an obsolete message from meter {} for an old query: {}", meter_id, message->sender_id, *message);
         //At this point, we know the message is for the current query
         } else if(message->sender_round == primary_protocol_state.get_current_overlay_round()) {
             primary_protocol_state.handle_overlay_message(message);
@@ -74,7 +74,7 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::OverlayTranspo
             //If it's a message for a future round, buffer it until my round advances
             primary_protocol_state.buffer_future_message(message);
         } else {
-            //Log warning or Fine
+            logger->debug("Meter {}, already in round {}, rejected a message from meter {} as too old: {}", meter_id, primary_protocol_state.get_current_overlay_round(), message->sender_id, *message);
         }
     //Same handling but for messages intended for my second ID
     } else if (has_second_id &&
@@ -83,16 +83,16 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::OverlayTranspo
         if(wrapped_message->query_num > secondary_protocol_state->get_current_query_num()) {
             secondary_protocol_state->buffer_future_message(message);
         } else if (wrapped_message->query_num < secondary_protocol_state->get_current_query_num()) {
-            //Log warning
+            logger->warn("Meter {} discarded an obsolete message from meter {} for an old query: {}", second_id, message->sender_id, *message);
         } else if(message->sender_round == secondary_protocol_state->get_current_overlay_round()) {
             secondary_protocol_state->handle_overlay_message(message);
         } else if(message->sender_round > secondary_protocol_state->get_current_overlay_round()) {
             secondary_protocol_state->buffer_future_message(message);
         } else {
-            //Log warning or Fine
+            logger->debug("Meter {} rejected a message from meter {} as too old: {}", second_id, message->sender_id, *message);
         }
     } else {
-        //Log warning: Rejected message because it's not the right gossip target
+        logger->warn("Meter {} rejected a message because it has the wrong gossip target: {}", meter_id, *message);
     }
 }
 
@@ -111,21 +111,21 @@ void MeterClient::handle_message(const std::shared_ptr<messaging::QueryRequest>&
     using namespace messaging;
     std::vector<FixedPoint_t> contributed_data;
     if(message->request_type == QueryType::CURR_USAGE_SUM || message->request_type == QueryType::CURR_USAGE_HISTOGRAM) {
-        contributed_data.emplace_back(meter.measure_consumption(message->time_window));
+        contributed_data.emplace_back(meter->measure_consumption(message->time_window));
     } else if (message->request_type == QueryType::PROJECTED_SUM || message->request_type == QueryType::PROJECTED_HISTOGRAM) {
-        contributed_data = meter.simulate_projected_usage(message->proposed_price_function, message->time_window);
+        contributed_data = meter->simulate_projected_usage(message->proposed_price_function, message->time_window);
     } else if (message->request_type == QueryType::CUMULATIVE_USAGE) {
-         contributed_data.emplace_back(meter.measure_daily_consumption());
+         contributed_data.emplace_back(meter->measure_daily_consumption());
     } else if (message->request_type == QueryType::AVAILABLE_OFFSET_BREAKDOWN) {
         contributed_data.resize(2);
-        contributed_data[0] = meter.measure_consumption(message->time_window);
-        contributed_data[1] = meter.measure_shiftable_consumption(message->time_window);
+        contributed_data[0] = meter->measure_consumption(message->time_window);
+        contributed_data[1] = meter->measure_shiftable_consumption(message->time_window);
     } else {
-        //Log error: unknown query type
+        logger->error("Meter {} received a message with unknown query type!", meter_id);
     }
-    primary_protocol_state.start_query(*message, contributed_data);
+    primary_protocol_state.start_query(message, contributed_data);
     if(has_second_id) {
-        secondary_protocol_state->start_query(*message, std::vector<FixedPoint_t>{});
+        secondary_protocol_state->start_query(message, std::vector<FixedPoint_t>{});
     }
 }
 

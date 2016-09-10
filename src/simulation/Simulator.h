@@ -31,14 +31,14 @@ class Simulator {
         EventManager event_manager;
         std::shared_ptr<Network> sim_network;
         int modulus;
-        /** All of the meter clients in the simulation; this is where they are stored. */
-        std::vector<MeterClient> meter_clients;
+        /** All of the meter clients in the simulation; the simulator owns them. */
+        std::vector<std::unique_ptr<MeterClient>> meter_clients;
         /** Index of meter clients that have secondary IDs.
          * Maps the secondary ID to a reference to an object in meter_clients. */
         std::map<int, std::reference_wrapper<MeterClient>> virtual_meter_clients;
-        /** References to the simulated Meters owned by the MeterClients,
+        /** Pointers to the simulated Meters owned by the MeterClients,
          * kept here so that the simulation can make them generate measurements */
-        std::vector<std::reference_wrapper<Meter>> meters;
+        std::vector<std::shared_ptr<Meter>> meters;
         //This should be a value type, but it can't be initialized until we know the number of meters, so it must be on the heap
         std::unique_ptr<UtilityClient> utility_client;
         //Same with this

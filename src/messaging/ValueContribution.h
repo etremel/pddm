@@ -34,6 +34,7 @@ struct ValueContribution : public MessageBody {
         }
         ValueContribution(const ValueTuple& value, const util::SignatureArray& signature) :
             value(value), signature(signature) {}
+        virtual ~ValueContribution() = default;
 
         inline bool operator==(const MessageBody& _rhs) const {
             if (auto* rhs = dynamic_cast<const ValueContribution*>(&_rhs))

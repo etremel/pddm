@@ -80,7 +80,7 @@ class SimCryptoWrapper: public util::CryptoLibrary {
 
 
 std::function<SimCryptoWrapper (MeterClient&)> crypto_library_builder(SimCrypto& crypto_instance);
- std::function<SimCryptoWrapper (UtilityClient&)> crypto_library_builder_utility(SimCrypto& crypto_instance);
+std::function<SimCryptoWrapper (UtilityClient&)> crypto_library_builder_utility(SimCrypto& crypto_instance);
 
 } /* namespace simulation */
 } /* namespace psm */

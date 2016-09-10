@@ -24,9 +24,8 @@ class PathOverlayMessage : public OverlayMessage {
     public:
         std::list<int> remaining_path;
         PathOverlayMessage(const int query_num, const std::list<int>& path, const std::shared_ptr<MessageBody>& body) :
-            OverlayMessage(query_num, path.front(), body), remaining_path(path) {
-            remaining_path.pop_front();
-        }
+            OverlayMessage(query_num, path.front(), body), remaining_path(++path.begin(), path.end()) { }
+        virtual ~PathOverlayMessage() = default;
 };
 
 }

@@ -31,6 +31,7 @@ class AggregationMessageValue : public MessageBody {
         AggregationMessageValue(A&&... args) : data(std::forward<A>(args)...) {}
         AggregationMessageValue(const AggregationMessageValue&) = default;
         AggregationMessageValue(AggregationMessageValue&&) = default;
+        virtual ~AggregationMessageValue() = default;
         operator std::vector<FixedPoint_t>() const { return data; }
         //Boilerplate copy-and-pasting of the entire interface of std::vector follows
         decltype(data)::size_type size() const noexcept { return data.size(); }
@@ -77,14 +78,22 @@ inline std::ostream& operator<<(std::ostream& out, const AggregationMessageValue
   return out;
 }
 
+/**
+ * The messages sent in the Aggregate phase of all versions of the protocol.
+ * They carry the query result (or its intermediate value) and the count of
+ * data points that contributed to the result. Query results are always vectors
+ * of FixedPoint_t.
+ */
 class AggregationMessage: public Message {
     private:
         int num_contributors;
     public:
+        using body_type = AggregationMessageValue;
         int query_num;
         AggregationMessage() : Message(0, nullptr), num_contributors(0), query_num(0) {}
         AggregationMessage(const int sender_id, const int query_num, std::shared_ptr<AggregationMessageValue> value) :
             Message(sender_id, value), num_contributors(1), query_num(query_num) {}
+        virtual ~AggregationMessage() = default;
         std::shared_ptr<AggregationMessageValue> get_body() { return std::static_pointer_cast<AggregationMessageValue>(body); };
         const std::shared_ptr<AggregationMessageValue> get_body() const { return std::static_pointer_cast<AggregationMessageValue>(body); };
         void add_value(const FixedPoint_t& value, int num_contributors);

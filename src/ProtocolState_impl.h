@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 #include <list>
+#include <spdlog/spdlog.h>
+#include <spdlog/fmt/ostr.h>
 
 #include "ProtocolState.h"
 #include "Configuration.h"
@@ -20,8 +22,7 @@
 #include "util/Overlay.h"
 #include "TreeAggregationState.h"
 #include "util/OStreams.h"
-#include "spdlog/spdlog.h"
-#include "spdlog/fmt/ostr.h"
+#include "util/DebugState.h"
 
 namespace pddm {
 
@@ -36,18 +37,19 @@ ProtocolState<Impl>::ProtocolState(Impl* subclass_ptr, NetworkClient_t& network,
 }
 
 template<typename Impl>
-void ProtocolState<Impl>::start_query(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data) {
+void ProtocolState<Impl>::start_query(const std::shared_ptr<messaging::QueryRequest>& query_request, const std::vector<FixedPoint_t>& contributed_data) {
     overlay_round = -1;
     is_last_round = false;
     ping_response_from_predecessor = false;
     timers.cancel_timer(round_timeout_timer);
     proxy_values.clear();
     failed_meter_ids.clear();
+    util::init_debug_state();
     aggregation_phase_state = std::make_unique<TreeAggregationState>(meter_id, num_aggregation_groups, num_meters,
             network, query_request);
     std::vector<int> proxies = util::pick_proxies(meter_id, num_aggregation_groups, num_meters);
     logger->trace("Meter {} chose these proxies: {}", meter_id, proxies);
-    my_contribution = std::make_shared<messaging::ValueTuple>(query_request.query_number, contributed_data, proxies);
+    my_contribution = std::make_shared<messaging::ValueTuple>(query_request->query_number, contributed_data, proxies);
     impl_this->start_query_impl(query_request, contributed_data);
 }
 
@@ -123,7 +125,7 @@ void ProtocolState<Impl>::super_end_overlay_round() {
     //Send outgoing messages at the start of the next round
     send_overlay_message_batch();
 
-    timers.register_timer(OVERLAY_ROUND_TIMEOUT, [this](){handle_round_timeout();});
+    round_timeout_timer = timers.register_timer(OVERLAY_ROUND_TIMEOUT, [this](){handle_round_timeout();});
     //If the meter we're waiting for in the next round is known to be dead, immediately end it;
     //there's no point waiting for the timeout
     const int predecessor = util::gossip_predecessor(meter_id, overlay_round, num_meters);
@@ -164,17 +166,11 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
     //First, check waiting messages to see if some are now in the right round
     for(auto message_iter = waiting_messages.begin();
             message_iter != waiting_messages.end(); ) {
-        if(auto waiting_message = std::dynamic_pointer_cast<messaging::PathOverlayMessage>(*message_iter)) {
-            if(waiting_message->remaining_path.front() == comm_target) {
-                //Pop remaining_path into destination, wrap it up in a new OverlayTransportMessage, then delete from waiting_messages
-                waiting_message->destination = waiting_message->remaining_path.front();
-                waiting_message->remaining_path.pop_front();
-                messages_to_send.emplace_back(std::make_shared<messaging::OverlayTransportMessage>(
-                        meter_id, overlay_round, false, waiting_message));
-                message_iter = waiting_messages.erase(message_iter);
-            } else {
-                ++message_iter;
-            }
+        if((*message_iter)->destination == comm_target) {
+            //wrap it up in a new OverlayTransportMessage, then delete from waiting_messages
+            messages_to_send.emplace_back(std::make_shared<messaging::OverlayTransportMessage>(
+                    meter_id, overlay_round, false, *message_iter));
+            message_iter = waiting_messages.erase(message_iter);
         } else {
             ++message_iter;
         }
@@ -188,6 +184,7 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
             waiting_messages.emplace_back(overlay_message);
         }
     }
+//    logger->trace("Meter {} starting round {}. Size of messages_to_send: {}; size of waiting_messages: {}", meter_id, overlay_round, messages_to_send.size(), waiting_messages.size());
     outgoing_messages.clear();
     //Now, send all the messages, marking the last one as final
     if(!messages_to_send.empty()) {
@@ -199,6 +196,7 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
                 get_current_query_num(), comm_target, nullptr);
         auto dummy_transport = std::make_shared<messaging::OverlayTransportMessage>(
                 meter_id, overlay_round, true, dummy_message);
+        logger->trace("Meter {} sending a dummy message to meter {}", meter_id, comm_target);
         network.send({dummy_transport}, comm_target);
     }
 }
@@ -206,7 +204,7 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
 /**
  * Processes an overlay message that has been received for the current
  * round. The superclass implementation only resets the message timeout for
- * this round and appends the message to waitingMessages if it needs to be
+ * this round and appends the message to waiting_messages if it needs to be
  * forwarded. Subclasses should add phase-specific handling for the message
  * and end the round if it is the final message
  * @param message An overlay message that should be handled by this meter
@@ -228,6 +226,10 @@ void ProtocolState<Impl>::handle_overlay_message(const std::shared_ptr<messaging
     }
     if(auto path_overlay_message = std::dynamic_pointer_cast<messaging::PathOverlayMessage>(message->body)) {
         if(!path_overlay_message->remaining_path.empty()) {
+            //Pop remaining_path into destination and add to waiting_messages
+            path_overlay_message->destination = path_overlay_message->remaining_path.front();
+//            path_overlay_message->remaining_path.erase(path_overlay_message->remaining_path.begin());
+            path_overlay_message->remaining_path.pop_front();
             waiting_messages.emplace_back(path_overlay_message);
         }
     }

@@ -33,14 +33,14 @@ class TreeAggregationState {
         const int num_groups;
         const int num_meters;
         NetworkClient_t& network;
-        const messaging::QueryRequest& current_query;
+        const std::shared_ptr<messaging::QueryRequest> current_query;
         bool initialized;
         int children_received_from;
         int children_needed;
         std::shared_ptr<messaging::AggregationMessage> aggregation_intermediate;
     public:
         TreeAggregationState(const int node_id, const int num_groups, const int num_meters,
-                NetworkClient_t& network_client, const messaging::QueryRequest& query_request) :
+                NetworkClient_t& network_client, const std::shared_ptr<messaging::QueryRequest>& query_request) :
             node_id(node_id), num_groups(num_groups), num_meters(num_meters), network(network_client),
             current_query(query_request), initialized(false), children_received_from(0), children_needed(2) {}
         /** Performs initial setup on the tree aggregation state, such as initializing

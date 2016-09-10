@@ -17,6 +17,7 @@ class Message {
         int sender_id;
         std::shared_ptr<MessageBody> body;
         Message(const int sender_id, std::shared_ptr<MessageBody> body) : sender_id(sender_id), body(std::move(body)) {};
+        virtual ~Message() = default;
 };
 
 }

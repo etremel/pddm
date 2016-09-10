@@ -26,6 +26,8 @@ public:
     std::shared_ptr<MessageBody> body;
     OverlayMessage(const int query_num, const int dest_id, const std::shared_ptr<MessageBody>& body, bool is_encrypted = false, bool flood = false) :
         query_num(query_num), destination(dest_id), is_encrypted(is_encrypted), flood(flood), body(body) {};
+    virtual ~OverlayMessage() = default;
+
     inline bool operator==(const MessageBody& _rhs) const {
         auto lhs = this;
         if (auto* rhs = dynamic_cast<const OverlayMessage*>(&_rhs))

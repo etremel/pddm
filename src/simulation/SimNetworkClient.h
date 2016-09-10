@@ -10,20 +10,20 @@
 #include <memory>
 #include <vector>
 #include <queue>
+#include <spdlog/spdlog.h>
 
 #include "../NetworkClient.h"
 #include "../messaging/MessageType.h"
-#include "EventManager.h"
 #include "Network.h"
+#include "EventManager.h"
 
 namespace pddm {
 //Forward declaration, because MeterClient is defined in terms of NetworkClient
 class MeterClient;
+}
 
+namespace pddm {
 namespace simulation {
-
-class Network;
-
 /**
  * A network client for meters in the simulation. Buffers messages locally until
  * the simulated meter is ready to receive them (i.e. done processing the current
@@ -33,6 +33,7 @@ class SimNetworkClient : public NetworkClient {
         /** Pair associating an untyped (void*) message pointer and its (enum value) actual type. */
         using TypeMessagePair = std::pair<messaging::MessageType, std::shared_ptr<void>>;
     private:
+        std::shared_ptr<spdlog::logger> logger;
         MeterClient& meter_client;
         std::shared_ptr<Network> network;
         EventManager& event_manager;
@@ -50,16 +51,19 @@ class SimNetworkClient : public NetworkClient {
         /** Mixed-type list of incoming messages. */
         std::queue<TypeMessagePair> incoming_message_queue;
 
-        class SendFunctor;
-
         void send(std::shared_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id);
 
         void resume_from_busy();
 
     public:
         SimNetworkClient(MeterClient& owning_meter_client, const std::shared_ptr<Network>& network) :
-            meter_client(owning_meter_client), network(network), event_manager(network->event_manager),
-            accumulated_delay_micros(0), client_is_busy(false), busy_until_time(0) {};
+            logger(spdlog::get("global_logger")),
+            meter_client(owning_meter_client),
+            network(network),
+            event_manager(network->event_manager),
+            accumulated_delay_micros(0),
+            client_is_busy(false),
+            busy_until_time(0) {};
         virtual ~SimNetworkClient() = default;
         //Inherited from NetworkClient
         void send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id);

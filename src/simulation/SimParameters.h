@@ -25,6 +25,8 @@ constexpr int TOTAL_TIMESTEPS = 7;
 const int PERCENT_POOR_HOMES = 25;
 const int PERCENT_RICH_HOMES = 25;
 
+const int METER_FAILURES_PER_QUERY = 0;
+
 //Duration time assumptions for cryptography operations
 const int RSA_DECRYPT_TIME_MICROS = 461;
 const int RSA_ENCRYPT_TIME_MICROS = 30;

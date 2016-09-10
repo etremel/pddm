@@ -20,6 +20,7 @@ class SignatureResponse: public Message {
         using body_type = StringBody;
         SignatureResponse(const int sender_id, const std::shared_ptr<StringBody>& encrypted_response) :
             Message(sender_id, encrypted_response) {};
+        virtual ~SignatureResponse() = default;
 };
 
 } /* namespace messaging */

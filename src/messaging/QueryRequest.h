@@ -32,6 +32,7 @@ class QueryRequest: public MessageBody {
             request_type(request_type), time_window(time_window), query_number(query_number), proposed_price_function(proposed_price_function) {}
         QueryRequest(const QueryType& request_type, const int time_window, const int query_number) :
             request_type(request_type), time_window(time_window), query_number(query_number) {}
+        virtual ~QueryRequest() = default;
         inline bool operator==(const MessageBody& _rhs) const {
             if (auto* rhs = dynamic_cast<const QueryRequest*>(&_rhs))
                 return this->request_type == rhs->request_type

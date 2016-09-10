@@ -21,6 +21,7 @@ class SignatureRequest : public Message {
         using body_type = StringBody;
         SignatureRequest(const int sender_id, const std::shared_ptr<StringBody>& encrypted_value) :
             Message(sender_id, encrypted_value) {}
+        virtual ~SignatureRequest() = default;
 };
 
 }

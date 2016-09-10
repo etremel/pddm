@@ -35,9 +35,11 @@ class Event {
         Event(Event&&) = default;
 
         /** Compares Events by their fire time; a < b if a will fire before b. */
-        friend bool operator>(const Event& lhs, const Event& rhs) { return rhs < lhs; }
-        /** Compares Events by their fire time; a < b if a will fire before b. */
         friend bool operator<(const Event& lhs, const Event& rhs) { return lhs.fire_time < rhs.fire_time; }
+        /** Compares Events by their fire time; a < b if a will fire before b. */
+        friend bool operator>(const Event& lhs, const Event& rhs) { return rhs < lhs; }
+        friend bool operator<=(const Event& lhs, const Event& rhs) { return lhs.fire_time <= rhs.fire_time;}
+        friend bool operator>=(const Event& lhs, const Event& rhs) { return rhs <= lhs; }
 //        /** Deep equality comparison. Two events are only equal if they contain the same action and have the same fire time. */
 //        bool operator==(const Event& other) const;
         void fire();

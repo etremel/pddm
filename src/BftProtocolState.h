@@ -10,6 +10,7 @@
 #include <cmath>
 #include <memory>
 #include <vector>
+#include <spdlog/spdlog.h>
 
 #include "ProtocolState.h"
 #include "FixedPoint_t.h"
@@ -27,6 +28,7 @@ enum class BftProtocolPhase { IDLE, SETUP, SHUFFLE, AGREEMENT, AGGREGATE };
 
 class BftProtocolState: public ProtocolState<BftProtocolState> {
     private:
+        std::shared_ptr<spdlog::logger> logger;
         BftProtocolPhase protocol_phase;
         std::unique_ptr<CrusaderAgreementState> agreement_phase_state;
         int agreement_start_round;
@@ -37,7 +39,9 @@ class BftProtocolState: public ProtocolState<BftProtocolState> {
         BftProtocolState(NetworkClient_t& network, CryptoLibrary_t& crypto,
                 TimerManager_t& timer_library, const int num_meters, const int meter_id) :
                     ProtocolState(this, network, crypto, timer_library, num_meters, meter_id, 2 * FAILURES_TOLERATED + 1),
-                    protocol_phase(BftProtocolPhase::IDLE), agreement_start_round(0) {}
+                    logger(spdlog::get("global_logger")),
+                    protocol_phase(BftProtocolPhase::IDLE),
+                    agreement_start_round(0) {}
         virtual ~BftProtocolState() = default;
         void handle_signature_response(const std::shared_ptr<messaging::SignatureResponse>& message);
 

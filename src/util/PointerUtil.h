@@ -72,6 +72,21 @@ template<typename T>
 using unordered_ptr_multiset = std::unordered_multiset<std::shared_ptr<T>, ptr_hash<T>, ptr_equal<T>>;
 
 /**
+ * Helper for writing stream-ouput operators that prints a shared_ptr "by value":
+ * either prints the value pointed to by the pointer (using its operator<<), or
+ * prints the string "nullptr".
+ * @param out The stream to print to
+ * @param ptr The pointer to print in this stream
+ */
+template<typename T>
+inline void print_ptr(std::ostream& out, const std::shared_ptr<T>& ptr) {
+    if(ptr == nullptr)
+        out << "nullptr";
+    else
+        out << *ptr;
+}
+
+/**
  * Stream-output operator overload specialized for pointer-sets; attempts to
  * dereference each element before calling operator<< on it, or prints "nullptr"
  * if the element is a null pointer.
@@ -84,7 +99,8 @@ std::ostream& operator<< (std::ostream& out, const unordered_ptr_set<T>& s) {
   if ( !s.empty() ) {
     out << '[';
     for(const auto& ptr : s) {
-        out << (ptr == nullptr ? "nullptr" : *ptr) << ", ";
+        print_ptr(out, ptr);
+        out << ", ";
     }
     out << "\b\b]";
   }
@@ -96,10 +112,7 @@ std::ostream& operator<< (std::ostream& out, const unordered_ptr_multiset<T>& s)
   if ( !s.empty() ) {
     out << '[';
     for(const auto& ptr : s) {
-        if(ptr == nullptr)
-            out << "nullptr";
-        else
-            out << *ptr;
+        print_ptr(out, ptr);
         out << ", ";
     }
     out << "\b\b]";

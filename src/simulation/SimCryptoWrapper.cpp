@@ -7,25 +7,21 @@
 
 #include "SimCryptoWrapper.h"
 
-#include <functional>
-
-#include "../Configuration.h"
-#include "../ConfigurationIncludes.h"
-#include "../UtilityClient.h"
 #include "../MeterClient.h"
+#include "../UtilityClient.h"
 
 namespace pddm {
 namespace simulation {
 
 
-CryptoLibraryBuilderFunc crypto_library_builder(SimCrypto& crypto_instance) {
+std::function<SimCryptoWrapper (MeterClient&)> crypto_library_builder(SimCrypto& crypto_instance) {
     return [&crypto_instance](MeterClient& client) {
         crypto_instance.add_meter(client.meter_id, client.get_network_client());
         return SimCryptoWrapper(crypto_instance, client.meter_id);
     };
 }
 
- std::function<CryptoLibrary_t (UtilityClient&)> crypto_library_builder_utility(SimCrypto& crypto_instance) {
+std::function<SimCryptoWrapper (UtilityClient&)> crypto_library_builder_utility(SimCrypto& crypto_instance) {
      return [&crypto_instance](UtilityClient& client) {
          return SimCryptoWrapper(crypto_instance, -1);
      };

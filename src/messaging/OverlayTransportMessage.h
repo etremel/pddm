@@ -24,6 +24,7 @@ class OverlayTransportMessage: public Message {
         OverlayTransportMessage(const int sender_id, const int sender_round,
                 const bool is_final_message, std::shared_ptr<OverlayMessage> wrapped_message) :
             Message(sender_id, wrapped_message), sender_round(sender_round), is_final_message(is_final_message) {};
+        virtual ~OverlayTransportMessage() = default;
 };
 
 inline std::ostream& operator<< (std::ostream& out, const OverlayTransportMessage& message) {

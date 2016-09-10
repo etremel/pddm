@@ -22,6 +22,7 @@ struct AgreementValue : public MessageBody {
         util::SignatureArray accepter_signature;
         AgreementValue(const SignedValue& signed_value, const int accepter_id) :
             signed_value(signed_value), accepter_id(accepter_id) {}
+        virtual ~AgreementValue() = default;
         inline bool operator==(const MessageBody& _rhs) const {
             if (auto* rhs = dynamic_cast<const AgreementValue*>(&_rhs))
                 return this->signed_value == rhs->signed_value

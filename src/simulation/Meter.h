@@ -59,9 +59,6 @@ class Meter : public MeterInterface {
 };
 
 
-std::function<Meter (MeterClient&)> meter_builder(const IncomeLevel& income_level, std::list<Device>& owned_devices,
-        const PriceFunction& energy_price_function, std::vector<std::reference_wrapper<Meter>>& meter_references);
-
 } /* namespace simulation */
 } /* namespace psm */
 

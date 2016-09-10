@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <spdlog/fmt/ostr.h>
 
 #include "CtProtocolState.h"
 #include "messaging/OverlayMessage.h"
@@ -14,11 +15,11 @@
 #include "messaging/QueryRequest.h"
 #include "messaging/OnionBuilder.h"
 #include "util/PathFinder.h"
-#include "spdlog/fmt/ostr.h"
+#include "util/DebugState.h"
 
 namespace pddm {
 
-void CtProtocolState::start_query_impl(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data) {
+void CtProtocolState::start_query_impl(const std::shared_ptr<messaging::QueryRequest>& query_request, const std::vector<FixedPoint_t>& contributed_data) {
     //super.start_query()
     //Reinitialize aggregation state
     protocol_phase = CtProtocolPhase::SHUFFLE;
@@ -35,28 +36,21 @@ void CtProtocolState::handle_overlay_message_impl(const std::shared_ptr<messagin
     auto overlay_message = std::static_pointer_cast<messaging::OverlayMessage>(message->body);
     //Dummy messages will have a null payload
     if(overlay_message->body != nullptr) {
-        //If it's not an encrypted onion, the message will be a PathOverlayMessage
-        if(auto path_message = std::dynamic_pointer_cast<messaging::PathOverlayMessage>(overlay_message)) {
-            if(path_message->remaining_path.empty()) {
-                //The message does not need to be forwarded any more, so it should be received here
-                if(protocol_phase == CtProtocolPhase::SHUFFLE) {
-                    handle_shuffle_phase_message(*overlay_message);
-                } else if(protocol_phase == CtProtocolPhase::ECHO) {
-                    handle_echo_phase_message(*overlay_message);
-                }
-            } //else, it has already been added to waiting_messages
-        //If it's an encrypted onion, see if the payload is the next layer or a value that should be recieved here
-        } else if(auto enclosed_message = std::dynamic_pointer_cast<messaging::OverlayMessage>(overlay_message->body)){
+        /* If it's an encrypted onion that needs to be forwarded, the payload will be the next layer.
+         * If the payload is not an OverlayMessage, it's either a PathOverlayMessage or the last layer
+         * of the onion. The last layer of the onion will always have destination == meter_id (because
+         * it was just received here), but a PathOverlayMessage that still needs to be forwarded will
+         * have its destination already set to the next hop by the superclass handle_overlay_message.
+         */
+        if(auto enclosed_message = std::dynamic_pointer_cast<messaging::OverlayMessage>(overlay_message->body)){
             waiting_messages.emplace_back(enclosed_message);
-        } else {
-            //The payload is not an OverlayMessage, so this is the last layer of the onion
-            //(ugh, code duplication)
+        } else if(overlay_message->destination == meter_id){
             if(protocol_phase == CtProtocolPhase::SHUFFLE) {
                 handle_shuffle_phase_message(*overlay_message);
             } else if(protocol_phase == CtProtocolPhase::ECHO) {
                 handle_echo_phase_message(*overlay_message);
             }
-        }
+        } //If destination didn't match, it was already added to waiting_messages
     }
     if(message->is_final_message && is_in_overlay_phase()) {
         end_overlay_round();
@@ -97,6 +91,8 @@ void CtProtocolState::send_aggregate_if_done() {
         aggregation_phase_state->compute_and_send_aggregate(proxy_values);
         protocol_phase = CtProtocolPhase::IDLE;
         logger->debug("Meter {} is finished with Aggregate", meter_id);
+        util::debug_state().num_finished_aggregate++;
+        util::print_aggregate_status(logger, num_meters);
     }
 }
 
@@ -112,6 +108,7 @@ void CtProtocolState::end_overlay_round_impl() {
             std::remove_copy(proxy_value->value.proxies.begin(),
                     proxy_value->value.proxies.end(), other_proxies.begin(), meter_id);
             auto proxy_paths = util::find_paths(meter_id, other_proxies, num_meters, overlay_round+1);
+            logger->trace("Meter {} chose these paths for echo: {}", meter_id, proxy_paths);
             for(const auto& proxy_path : proxy_paths) {
                 //Encrypt with the destination's public key, but don't make an onion
                 outgoing_messages.emplace_back(crypto.rsa_encrypt(std::make_shared<messaging::PathOverlayMessage>(
@@ -121,11 +118,15 @@ void CtProtocolState::end_overlay_round_impl() {
         }
         echo_start_round = overlay_round;
         protocol_phase = CtProtocolPhase::ECHO;
+        util::debug_state().num_finished_shuffle++;
+        util::print_shuffle_status(logger, num_meters);
     }
     //Determine if the Echo phase has ended
     else if (protocol_phase == CtProtocolPhase::ECHO
             && overlay_round >= echo_start_round + FAILURES_TOLERATED + 2 * log2n + 1) {
         logger->debug("Meter {} is finished with Echo", meter_id);
+        util::debug_state().num_finished_echo++;
+        util::print_echo_status(logger, meter_id, num_meters);
         //Start the Aggregate phase
         protocol_phase = CtProtocolPhase::AGGREGATE;
         start_aggregate_phase();

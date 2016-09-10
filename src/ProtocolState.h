@@ -11,13 +11,13 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <spdlog/spdlog.h>
 
 #include "Configuration.h"
 #include "FixedPoint_t.h"
 #include "messaging/ValueTuple.h"
 #include "util/PointerUtil.h"
 #include "util/TimerManager.h"
-#include "spdlog/spdlog.h"
 
 namespace pddm {
 class TreeAggregationState;
@@ -43,7 +43,7 @@ class ProtocolState {
         bool require_is_in_overlay_phase() const { return impl_this->is_in_overlay_phase(); }
         bool require_is_in_aggregate_phase() const { return impl_this->is_in_aggregate_phase(); }
         void require_send_aggregate_if_done() { impl_this->send_aggregate_if_done(); }
-        void require_start_query_impl(const messaging::QueryRequest& query_request,
+        void require_start_query_impl(const std::shared_ptr<messaging::QueryRequest>& query_request,
                 const std::vector<FixedPoint_t>& contributed_data) { impl_this->start_query_impl(query_request, contributed_data); }
         void require_handle_overlay_message_impl(const std::shared_ptr<messaging::OverlayTransportMessage>& message) {
             impl_this->handle_overlay_message_impl(message); }
@@ -53,7 +53,7 @@ class ProtocolState {
     public:
         virtual ~ProtocolState() = default;
 
-        void start_query(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data);
+        void start_query(const std::shared_ptr<messaging::QueryRequest>& query_request, const std::vector<FixedPoint_t>& contributed_data);
         void handle_overlay_message(const std::shared_ptr<messaging::OverlayTransportMessage>& message);
         void handle_aggregation_message(const std::shared_ptr<messaging::AggregationMessage>& message);
         void handle_ping_message(const std::shared_ptr<messaging::PingMessage>& message);

@@ -223,17 +223,6 @@ FixedPoint_t Meter::measure_daily_consumption() const {
     return daily_consumption;
 }
 
-std::function<Meter (MeterClient&)>  meter_builder(const IncomeLevel& income_level, std::list<Device>& owned_devices,
-        const PriceFunction& energy_price_function, std::vector<std::reference_wrapper<Meter>>& meter_references) {
-    return [&income_level, &owned_devices, &energy_price_function, &meter_references](MeterClient& client) {
-        Meter new_meter(income_level, owned_devices, energy_price_function);
-        //Assuming MeterClients are created in strict ID order, this will put a reference to the Meter
-        //at the same index as the ID of the new MeterClient that owns it
-        meter_references.push_back(std::ref(new_meter)); //FIX THIS
-        return new_meter;
-    };
-}
-
 } /* namespace simulation */
 } /* namespace psm */
 

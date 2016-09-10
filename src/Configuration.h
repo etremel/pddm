@@ -36,7 +36,6 @@ using TimerManager_t = simulation::SimTimerManager;
 using CryptoLibrary_t = simulation::SimCryptoWrapper;
 
 using NetworkClientBuilderFunc = std::function<NetworkClient_t (MeterClient&)>;
-using MeterBuilderFunc = std::function<Meter_t (MeterClient&)>;
 using CryptoLibraryBuilderFunc = std::function<CryptoLibrary_t (MeterClient&)>;
 using TimerManagerBuilderFunc = std::function<TimerManager_t (MeterClient&)>;
 

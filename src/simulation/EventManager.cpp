@@ -11,6 +11,9 @@
 #include <stdexcept>
 #include <algorithm>
 #include <memory>
+#include <iostream>
+
+#include "../util/PointerUtil.h"
 
 namespace pddm {
 namespace simulation {
@@ -20,8 +23,7 @@ using std::shared_ptr;
 using std::weak_ptr;
 
 void EventManager::run_simulation() {
-    bool done = false;
-        while (!done) {
+        while (true) {
             if (!timeout_queue.empty() && simulation_time - last_gc_time > GARBAGE_COLLECT_INTERVAL) {
                 garbage_collect_timeouts();
                 last_gc_time = simulation_time;
@@ -32,13 +34,13 @@ void EventManager::run_simulation() {
                 next = std::move(timeout_queue.top());
                 timeout_queue.pop();
             } else if (!event_queue.empty() &&
-                    (timeout_queue.empty() || *event_queue.top() < *timeout_queue.top())) {
+                    (timeout_queue.empty() || *event_queue.top() <= *timeout_queue.top())) {
                 next = std::move(event_queue.top());
                 event_queue.pop();
             }
 
             if(next == nullptr) { //Both queues were empty
-                done = true;
+                break;
             } else {
                 if(next->get_fire_time() < simulation_time) {
                     throw std::runtime_error("Error! Simulation time moved backwards!");
