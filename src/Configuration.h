@@ -28,7 +28,7 @@ class SimTimerManager;
 class SimCryptoWrapper;
 } /* namespace simulation */
 
-using ProtocolState_t = CtProtocolState;
+using ProtocolState_t = HftProtocolState;
 using Meter_t = simulation::Meter;
 using NetworkClient_t = simulation::SimNetworkClient;
 using UtilityNetworkClient_t = simulation::SimUtilityNetworkClient;

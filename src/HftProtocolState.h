@@ -49,7 +49,7 @@ class HftProtocolState: public ProtocolState<HftProtocolState> {
     protected:
         void send_aggregate_if_done();
         void end_overlay_round_impl();
-        void start_query_impl(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data);
+        void start_query_impl(const std::shared_ptr<messaging::QueryRequest>& query_request, const std::vector<FixedPoint_t>& contributed_data);
         void handle_overlay_message_impl(const std::shared_ptr<messaging::OverlayTransportMessage>& message);
 
         friend class ProtocolState;

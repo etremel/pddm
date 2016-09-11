@@ -30,7 +30,7 @@
 
 namespace pddm {
 
-void HftProtocolState::start_query_impl(const messaging::QueryRequest& query_request, const std::vector<FixedPoint_t>& contributed_data) {
+void HftProtocolState::start_query_impl(const std::shared_ptr<messaging::QueryRequest>& query_request, const std::vector<FixedPoint_t>& contributed_data) {
     protocol_phase = HftProtocolPhase::SCATTER;
     current_flood_messages.clear();
     relay_messages.clear();
@@ -55,10 +55,10 @@ void HftProtocolState::start_query_impl(const messaging::QueryRequest& query_req
     //Create a two-layer onion for each tuple, and start flooding it towards the relay
     for(const auto& proxy_relay : relays) {
         auto inner_layer = crypto.rsa_encrypt(std::make_shared<messaging::OverlayMessage>(
-                query_request.query_number, proxy_relay.first, signed_contribution, true),
+                query_request->query_number, proxy_relay.first, signed_contribution, true),
                 proxy_relay.first);
         auto outer_layer = crypto.rsa_encrypt(std::make_shared<messaging::OverlayMessage>(
-                query_request.query_number, proxy_relay.second, inner_layer, true),
+                query_request->query_number, proxy_relay.second, inner_layer, true),
                 proxy_relay.second);
         current_flood_messages.emplace(outer_layer);
     }
