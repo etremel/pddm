@@ -283,6 +283,13 @@ void Simulator::record_query_completion_time(const int query_num, const std::vec
 
 void Simulator::write_query_times(const std::string& file_timestamp) const {
     std::stringstream filename;
+    if(std::is_same<ProtocolState_t, BftProtocolState>::value) {
+        filename << "bft_";
+    } else if (std::is_same<ProtocolState_t, HftProtocolState>::value) {
+        filename << "hft_";
+    } else if (std::is_same<ProtocolState_t, CtProtocolState>::value) {
+        filename << "ct_";
+    }
     if(METER_FAILURES_PER_QUERY == 0) {
         filename << "query_times_nofail_";
     } else {
@@ -358,6 +365,13 @@ void Simulator::write_query_history(const std::string& file_timestamp) const {
 
 void Simulator::write_message_counts(const std::string& file_timestamp) const {
     std::stringstream filename;
+    if(std::is_same<ProtocolState_t, BftProtocolState>::value) {
+        filename << "bft_";
+    } else if (std::is_same<ProtocolState_t, HftProtocolState>::value) {
+        filename << "hft_";
+    } else if (std::is_same<ProtocolState_t, CtProtocolState>::value) {
+        filename << "ct_";
+    }
     filename << "meter_messages_";
     if(METER_FAILURES_PER_QUERY == 0) {
         filename << "nofail";
