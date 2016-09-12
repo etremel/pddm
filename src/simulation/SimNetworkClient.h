@@ -50,6 +50,8 @@ class SimNetworkClient : public NetworkClient {
         std::weak_ptr<Event> busy_done_event;
         /** Mixed-type list of incoming messages. */
         std::queue<TypeMessagePair> incoming_message_queue;
+        /** Message count tracker for simulation graphs. */
+        int num_messages_sent;
 
         void send(std::shared_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id);
 
@@ -63,7 +65,8 @@ class SimNetworkClient : public NetworkClient {
             event_manager(network->event_manager),
             accumulated_delay_micros(0),
             client_is_busy(false),
-            busy_until_time(0) {};
+            busy_until_time(0),
+            num_messages_sent(0) {};
         virtual ~SimNetworkClient() = default;
         //Inherited from NetworkClient
         void send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id);
@@ -76,6 +79,8 @@ class SimNetworkClient : public NetworkClient {
         /** Instructs the client to consider its MeterClient "busy" for a period of time.
          * Called by the SimCryptoLibrary when the client does a crypto operation. */
         void delay_client(const int delay_time_micros);
+
+        int get_total_messages_sent() const { return num_messages_sent; }
 
 };
 

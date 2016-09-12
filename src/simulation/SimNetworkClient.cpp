@@ -47,6 +47,7 @@ void SimNetworkClient::send(std::shared_ptr<std::list<TypeMessagePair>> untyped_
             network->send(*untyped_messages, recipient_id);
         }, busy_until_time, "Send messages after client delay");
     }
+    num_messages_sent += untyped_messages->size();
 };
 
 /**

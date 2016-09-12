@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_set>
 #include <list>
+#include <spdlog/spdlog.h>
 
 #include "Configuration.h"
 #include "messaging/AggregationMessage.h"
@@ -10,7 +11,6 @@
 #include "messaging/QueryRequest.h"
 #include "util/PointerUtil.h"
 #include "ConfigurationIncludes.h"
-#include "spdlog/spdlog.h"
 
 namespace pddm {
 
@@ -19,6 +19,8 @@ namespace pddm {
  * receiving responses.
  */
 class UtilityClient {
+    public:
+        using QueryCallback = std::function<void (const int, const std::vector<FixedPoint_t>&)>;
     private:
         enum class QueryProtocol { BFT, CT, HFT };
         /* Instead of making three subclasses of UtilityClient, we'll just switch behavior
@@ -36,7 +38,8 @@ class UtilityClient {
         int query_timeout_timer;
         int query_num;
         bool query_finished;
-        util::unordered_ptr_multiset<messaging::AggregationMessage> query_results;
+        std::map<int, QueryCallback> query_callbacks;
+        util::unordered_ptr_multiset<messaging::AggregationMessage> curr_query_results;
         /** All results of queries the utility has issued, indexed by query number. */
         std::vector<std::shared_ptr<messaging::AggregationMessageValue>> all_query_results;
         std::set<int> curr_query_meters_signed;
@@ -51,9 +54,14 @@ class UtilityClient {
         UtilityClient(const int num_meters, const std::function<UtilityNetworkClient_t (UtilityClient&)>& network_builder,
                 const std::function<CryptoLibrary_t (UtilityClient&)>& crypto_library_builder,
                 const std::function<TimerManager_t (UtilityClient&)>& timer_library_builder) :
-                    logger(spdlog::get("global_logger")), num_meters(num_meters), network(network_builder(*this)),
-                    crypto_library(crypto_library_builder(*this)), timer_library(timer_library_builder(*this)),
-                    query_timeout_timer(0), query_num(-1), query_finished(false) {}
+                    logger(spdlog::get("global_logger")),
+                    num_meters(num_meters),
+                    network(network_builder(*this)),
+                    crypto_library(crypto_library_builder(*this)),
+                    timer_library(timer_library_builder(*this)),
+                    query_timeout_timer(0),
+                    query_num(-1),
+                    query_finished(false) {}
         /** Handles receiving an AggregationMessage from a meter, which should contain a query result. */
         void handle_message(const std::shared_ptr<messaging::AggregationMessage>& message);
 
@@ -65,6 +73,15 @@ class UtilityClient {
 
         /** Starts a batch of queries that should be executed in sequence as quickly as possible */
         void start_queries(const std::list<std::shared_ptr<messaging::QueryRequest>>& queries);
+
+        /** Registers a callback function that should be run each time a query completes. */
+        int register_query_callback(const QueryCallback& callback);
+
+        /** Deregisters a callback function previously registered, using its ID. */
+        bool deregister_query_callback(const int callback_id);
+
+        /** Gets the stored result of a query that has completed. */
+        std::shared_ptr<messaging::AggregationMessageValue> get_query_result(const int query_num) { return all_query_results.at(query_num); }
 
         /** The maximum time (ms) the utility is willing to wait on a network round-trip */
         static constexpr int NETWORK_ROUNDTRIP_TIMEOUT = 100;

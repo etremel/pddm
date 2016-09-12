@@ -92,7 +92,7 @@ void HftProtocolState::handle_overlay_message_impl(const std::shared_ptr<messagi
 void HftProtocolState::handle_scatter_phase_message(const messaging::OverlayMessage& message) {
     if(auto wrapped_message = std::dynamic_pointer_cast<messaging::OverlayMessage>(message.body)) {
         //Just unwrap the message and save it for Gather
-        logger->trace("Meter {} got a relay message: {}", meter_id, *wrapped_message);
+        logger->debug("Meter {} got a relay message: {}", meter_id, *wrapped_message);
         relay_messages.emplace(wrapped_message);
     } else {
         logger->warn("Meter {} rejected a message because it was not a tuple to relay: {}", meter_id, message);
@@ -102,7 +102,7 @@ void HftProtocolState::handle_scatter_phase_message(const messaging::OverlayMess
 void HftProtocolState::handle_gather_phase_message(const messaging::OverlayMessage& message) {
     if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution>(message.body)) {
         if(contribution->value.query_num == my_contribution->query_num) {
-            logger->trace("Meter {} received proxy value: {}", meter_id, *contribution);
+            logger->debug("Meter {} received proxy value: {}", meter_id, *contribution);
             proxy_values.emplace(contribution);
         } else {
             logger->warn("Meter {} rejected a proxy value because it had the wrong query number: {}", meter_id, *contribution);

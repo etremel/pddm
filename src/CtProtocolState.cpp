@@ -62,7 +62,7 @@ void CtProtocolState::handle_shuffle_phase_message(const messaging::OverlayMessa
     //Drop messages that are received in the wrong phase (i.e. not ValueContributions) or have the wrong round number
     if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution>(message.body)) {
         if(contribution->value.query_num == my_contribution->query_num) {
-            logger->trace("Meter {} received proxy value: {}", meter_id, *contribution);
+            logger->debug("Meter {} received proxy value: {}", meter_id, *contribution);
             proxy_values.emplace(contribution);
         } else {
             logger->warn("Meter {} rejected a proxy value because it had the wrong query number: {}", meter_id, *contribution);
@@ -75,7 +75,7 @@ void CtProtocolState::handle_shuffle_phase_message(const messaging::OverlayMessa
 void CtProtocolState::handle_echo_phase_message(const messaging::OverlayMessage& message) {
     if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution>(message.body)) {
         if(contribution->value.query_num == my_contribution->query_num) {
-            logger->trace("Meter {} received echoed proxy value in round {}: {}", meter_id, overlay_round, *contribution);
+            logger->debug("Meter {} received echoed proxy value in round {}: {}", meter_id, overlay_round, *contribution);
             proxy_values.emplace(contribution);
         } else {
             logger->warn("Meter {} rejected a proxy value: {}", meter_id, *contribution);

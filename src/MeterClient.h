@@ -9,10 +9,10 @@
 
 #include <experimental/optional>
 #include <memory>
+#include <spdlog/spdlog.h>
 
 #include "Configuration.h"
 #include "ConfigurationIncludes.h"
-#include "spdlog/spdlog.h"
 
 namespace pddm {
 namespace messaging {
@@ -43,6 +43,9 @@ class MeterClient {
         std::shared_ptr<spdlog::logger> logger;
         /** A pointer to the meter interface this client should ask for measurements. */
         std::shared_ptr<Meter_t> meter;
+
+    public: //FIXME: Just for deadline purposes, let the simulator reach in and access these private members
+
         /** The component of the meter client that manages network operations. */
         NetworkClient_t network_client;
         /** A stateful object encapsulating a cryptography library set up to
@@ -51,6 +54,7 @@ class MeterClient {
         /** An instance of a timer library this meter client can use to set up timeout functions. */
         TimerManager_t timer_library;
 
+    private:
         int second_id;
         bool has_second_id;
 

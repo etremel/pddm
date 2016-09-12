@@ -8,8 +8,10 @@
 #pragma once
 
 #include <vector>
+#include <ostream>
 
 #include "../FixedPoint_t.h"
+#include "../util/OStreams.h"
 
 namespace pddm {
 
@@ -40,6 +42,16 @@ struct Device {
 
     Device() : name(""), standby_load(0.0), weekday_frequency(0), weekend_frequency(0), disable_to_save_money(false) {};
 };
+
+inline std::ostream& operator<<(std::ostream& stream, const Device& device) {
+    return stream << "{" << device.name
+            << " | Load per cycle: " << device.load_per_cycle
+            << "| Time per cycle: " << device.time_per_cycle
+            << "| Standby load: " << device.standby_load
+            << "| Weekday frequency: " << device.weekday_frequency
+            << "| Weekend frequency: " << device.weekend_frequency
+            << "}";
+}
 
 }
 }

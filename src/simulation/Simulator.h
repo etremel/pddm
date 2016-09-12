@@ -60,9 +60,16 @@ class Simulator {
         /** Maps the query number for each quarter-hour query to the simulation time at which it was issued */
         std::map<int, long> quarter_hour_query_numbers;
 
+        std::vector<int> query_round_trip_times;
+
         void read_devices_from_files(const std::string& device_power_data_file,
                 const std::string& device_frequency_data_file, const std::string& device_probability_data_file,
                 const std::string& device_saturation_data_file);
+
+        void record_query_completion_time(const int query_num, const std::vector<FixedPoint_t>& result);
+        void write_query_times(const std::string& file_timestamp) const;
+        void write_query_history(const std::string& file_timestamp) const;
+        void write_message_counts(const std::string& file_timestamp) const;
 
     public:
         Simulator() : event_manager(), sim_network(std::make_shared<Network>(event_manager)), modulus(0), sim_timers(event_manager) {}

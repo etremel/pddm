@@ -33,6 +33,11 @@ const int RSA_ENCRYPT_TIME_MICROS = 30;
 const int RSA_SIGN_TIME_MICROS = 458;
 const int RSA_VERIFY_TIME_MICROS = 27;
 
+//Output options
+const bool WRITE_MESSAGE_STATS = true;
+const bool WRITE_SIMULATION_RESULTS = false;
+const bool WRITE_QUERY_STATS = true;
+
 }
 }
 

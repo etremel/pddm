@@ -1,24 +1,30 @@
-/*
- * Simulator.cpp
+/**
+ * @file Simulator.cpp
  *
- *  Created on: May 27, 2016
- *      Author: edward
+ * @date May 27, 2016
+ * @author edward
  */
 
 #include "Simulator.h"
 
-#include <stddef.h>
+#include <cstdlib>
+#include <cstddef>
+#include <chrono>
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <list>
 #include <map>
+#include <iomanip>
 #include <regex>
+#include <random>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 #include <memory>
+
 
 #include "../Configuration.h"
 #include "../messaging/QueryRequest.h"
@@ -81,15 +87,15 @@ void Simulator::read_devices_from_files(const string& device_power_data_file, co
         //All text until the first tab is the name, then there are two tab-delimited doubles
         string name;
         std::getline(frequency_data, name, '\t');
-        frequency_data >> possible_devices[name].weekday_frequency;
-        frequency_data >> possible_devices[name].weekend_frequency;
+        frequency_data >> possible_devices.at(name).weekday_frequency;
+        frequency_data >> possible_devices.at(name).weekend_frequency;
     }
 
     while(std::getline(hourly_probability_stream, line)) {
         std::istringstream hourly_prob_data(line);
         string name;
         std::getline(hourly_prob_data, name, '\t');
-        Device& cur_device = possible_devices[name];
+        Device& cur_device = possible_devices.at(name);
         string series_type;
         hourly_prob_data >> series_type;
         if(series_type == "we") {
@@ -135,6 +141,8 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
     //Initialize the utility
     utility_client = std::make_unique<UtilityClient>(modulus, utility_network_client_builder(sim_network),
             crypto_library_builder_utility(*sim_crypto), timer_manager_builder_utility(event_manager));
+    using namespace std::placeholders;
+    utility_client->register_query_callback(std::bind(&Simulator::record_query_completion_time, this, _1, _2));
     PriceFunction sim_energy_price = [](const int time_of_day) {
         if(time_of_day > 17 && time_of_day < 20) {
             return Money(0.0734);
@@ -166,7 +174,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
             }
             //Otherwise, randomly decide whether to include this device, based on its saturation
             double saturation_as_fraction = device_saturation.second / 100.0;
-            if(std::binomial_distribution<>(saturation_as_fraction)(random_engine)) {
+            if(std::bernoulli_distribution(saturation_as_fraction)(random_engine)) {
                 home_devices.emplace_back(possible_devices[device_saturation.first]);
             }
         }
@@ -200,10 +208,12 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
             for(const auto& meter : meters) {
                 event_manager.submit([meter](){ meter->simulate_usage_timestep();}, timesteps::millisecond(timestep), "Simulate electricity usage timestep");
             }
-            if(timestep > 0 && timesteps::minute(timestep) % 60 == 0) {
+            if(timesteps::minute(timestep) == 60) {
+                long query_start_time = timesteps::millisecond(timestep) + 1;
                 auto test_query = std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 60, 0);
+                hour_query_numbers[0] = query_start_time;
                 event_manager.submit([test_query, this](){ utility_client->start_query(test_query); },
-                        timesteps::millisecond(timestep) + 1, "Start query from utility");
+                        query_start_time, "Start query from utility");
             }
         }
     } else {
@@ -256,10 +266,126 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
     }
 }
 
+void Simulator::record_query_completion_time(const int query_num, const std::vector<FixedPoint_t>& result) {
+    //query_num is a key in either hour_query_numbers, half_hour_query_numbers, or quarter_hour_query_numbers
+    auto query_num_find = hour_query_numbers.find(query_num);
+    if(query_num_find == hour_query_numbers.end()) {
+        query_num_find = half_hour_query_numbers.find(query_num);
+        if(query_num_find == half_hour_query_numbers.end()) {
+            query_num_find = quarter_hour_query_numbers.find(query_num);
+        }
+    }
+    long query_start_time = query_num_find->second;
+    //Safer than push_back in case we ever get query results out of numeric order
+    query_round_trip_times.resize(query_num + 1);
+    query_round_trip_times[query_num] = event_manager.get_current_time() - query_start_time;
+}
+
+void Simulator::write_query_times(const std::string& file_timestamp) const {
+    std::stringstream filename;
+    if(METER_FAILURES_PER_QUERY == 0) {
+        filename << "query_times_nofail_";
+    } else {
+        filename << "query_times_failures";
+    }
+    filename << modulus << "_" << file_timestamp << ".csv";
+    std::ofstream query_times_file(filename.str());
+    if(query_round_trip_times.size() == 1) {
+        query_times_file << modulus << "," << query_round_trip_times[0] << std::endl;
+    } else {
+        query_times_file << "QueryNum,Runtime" << std::endl;
+        for(unsigned int query_num = 0; query_num <  query_round_trip_times.size(); ++query_num) {
+            query_times_file << query_num << "," << query_round_trip_times[query_num] << std::endl;
+        }
+    }
+
+}
+
+
+std::tuple<int, int, int> to_hms(const long milliseconds) {
+    auto qr = std::div(milliseconds, 1000l);
+    qr = std::div(qr.quot, 60l);
+    //sec = (ms / 1000) % 60
+    auto s  = qr.rem;
+    qr = std::div(qr.quot, 60l);
+    //min = (ms / (1000*60)) % 60
+    auto m  = qr.rem;
+    auto h  = qr.quot;
+    return std::make_tuple((int)h, (int)m, (int)s);
+}
+
+void Simulator::write_query_history(const std::string& file_timestamp) const {
+    if(!hour_query_numbers.empty()) {
+        std::stringstream filename;
+        filename << "utility_60m_queries_" <<  modulus << "_" << file_timestamp << ".csv";
+        std::ofstream hour_query_file(filename.str());
+        for(const auto& query_time_pair : hour_query_numbers) {
+            auto time_tuple = to_hms(query_time_pair.second);
+            auto query_result = utility_client->get_query_result(query_time_pair.first);
+            hour_query_file << std::setfill('0') << std::setw(2) << std::get<0>(time_tuple) << ":" <<
+                    std::setw(2) << std::get<1>(time_tuple) << ":" <<
+                    std::setw(2) << std::get<2>(time_tuple) <<
+                    std::setfill(' ') << ", " << query_result << std::endl;
+        }
+    }
+    if(!half_hour_query_numbers.empty()) {
+        std::stringstream filename;
+        filename << "utility_30m_queries_" <<  modulus << "_" << file_timestamp << ".csv";
+        std::ofstream half_hour_query_file(filename.str());
+        for(const auto& query_time_pair : half_hour_query_numbers) {
+            auto time_tuple = to_hms(query_time_pair.second);
+            auto query_result = utility_client->get_query_result(query_time_pair.first);
+            half_hour_query_file << std::setfill('0') << std::setw(2) << std::get<0>(time_tuple) << ":" <<
+                    std::setw(2) << std::get<1>(time_tuple) << ":" <<
+                    std::setw(2) << std::get<2>(time_tuple) <<
+                    std::setfill(' ') << ", " << query_result << std::endl;
+        }
+    }
+    if(!quarter_hour_query_numbers.empty()) {
+        std::stringstream filename;
+        filename << "utility_15m_queries_" <<  modulus << "_" << file_timestamp << ".csv";
+        std::ofstream quarter_hour_query_file(filename.str());
+        for(const auto& query_time_pair : quarter_hour_query_numbers) {
+            auto time_tuple = to_hms(query_time_pair.second);
+            auto query_result = utility_client->get_query_result(query_time_pair.first);
+            quarter_hour_query_file << std::setfill('0') << std::setw(2) << std::get<0>(time_tuple) << ":" <<
+                    std::setw(2) << std::get<1>(time_tuple) << ":" <<
+                    std::setw(2) << std::get<2>(time_tuple) <<
+                    std::setfill(' ') << ", " << query_result << std::endl;
+        }
+    }
+}
+
+void Simulator::write_message_counts(const std::string& file_timestamp) const {
+    std::stringstream filename;
+    filename << "meter_messages_";
+    if(METER_FAILURES_PER_QUERY == 0) {
+        filename << "nofail";
+    } else {
+        filename << "failures_";
+    }
+    filename << "_" << modulus << "_" << file_timestamp << ".csv";
+    std::ofstream message_file(filename.str());
+    for(unsigned int meter_id = 0; meter_id < meter_clients.size(); ++meter_id) {
+        message_file << meter_id << "," << meter_clients[meter_id]->network_client.get_total_messages_sent() << std::endl;
+    }
+}
+
 void Simulator::run(const std::set<QueryMode>& query_options) {
     setup_queries(query_options);
     event_manager.run_simulation();
-    //TODO: write output
+    auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::stringstream file_timestamp;
+    file_timestamp << std::put_time(std::localtime(&now), "%m%d-%H%M%S");
+    if(WRITE_MESSAGE_STATS) {
+        write_message_counts(file_timestamp.str());
+    }
+    if(WRITE_SIMULATION_RESULTS) {
+        write_query_history(file_timestamp.str());
+    }
+    if(WRITE_QUERY_STATS) {
+        write_query_times(file_timestamp.str());
+    }
 }
 
 

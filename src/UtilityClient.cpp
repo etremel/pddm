@@ -2,11 +2,11 @@
 #include <algorithm>
 #include <queue>
 #include <cmath>
+#include <spdlog/fmt/ostr.h>
 
 #include "UtilityClient.h"
 #include "messaging/StringBody.h"
 #include "util/OStreams.h"
-#include "spdlog/fmt/ostr.h"
 
 namespace pddm {
 
@@ -14,13 +14,13 @@ using std::shared_ptr;
 using namespace messaging;
 
 void UtilityClient::handle_message(const std::shared_ptr<messaging::AggregationMessage>& message) {
-    query_results.insert(message);
+    curr_query_results.insert(message);
     //Clear the timeout, since we got a message
     timer_library.cancel_timer(query_timeout_timer);
     //Check if this was definitely the last result from the query
     if(!query_finished &&
-            ((query_protocol == QueryProtocol::BFT && (int)query_results.size() > 2 * ProtocolState_t::FAILURES_TOLERATED)
-            || (query_protocol != QueryProtocol::BFT && (int)query_results.size() > ProtocolState_t::FAILURES_TOLERATED))) {
+            ((query_protocol == QueryProtocol::BFT && (int)curr_query_results.size() > 2 * ProtocolState_t::FAILURES_TOLERATED)
+            || (query_protocol != QueryProtocol::BFT && (int)curr_query_results.size() > ProtocolState_t::FAILURES_TOLERATED))) {
         end_query();
     }
     //If the query isn't finished, set a new timeout for the next result message
@@ -50,7 +50,7 @@ void UtilityClient::handle_message(const std::shared_ptr<messaging::SignatureReq
 void UtilityClient::start_query(const std::shared_ptr<messaging::QueryRequest>& query) {
     curr_query_meters_signed.clear();
     query_num = query->query_number;
-    query_results.clear();
+    curr_query_results.clear();
     logger->info("Starting query {}", query_num);
     for(int meter_id = 0; meter_id < num_meters; ++meter_id) {
         network.send(query, meter_id);
@@ -93,29 +93,32 @@ void UtilityClient::start_queries(const std::list<std::shared_ptr<messaging::Que
 void UtilityClient::end_query() {
     shared_ptr<AggregationMessageValue> query_result;
     if(query_protocol == QueryProtocol::BFT) {
-        for (const auto& result : query_results) {
-            logger->debug("Utility results: {}", query_results);
+        for (const auto& result : curr_query_results) {
+            logger->debug("Utility results: {}", curr_query_results);
             //Is this the right way to iterate through a multiset and find out the count of each element?
-            if((int)query_results.count(result) >= ProtocolState_t::FAILURES_TOLERATED + 1) {
+            if((int)curr_query_results.count(result) >= ProtocolState_t::FAILURES_TOLERATED + 1) {
                 query_result = result->get_body();
                 break;
             }
         }
     } else {
         int most_contributors = 0;
-        for (const auto& result : query_results) {
+        for (const auto& result : curr_query_results) {
             if(result->get_num_contributors() > most_contributors) {
                 query_result = result->get_body();
             }
         }
     }
-    query_results.clear();
+    curr_query_results.clear();
     if((int) all_query_results.size() <= query_num) {
         all_query_results.resize(query_num+1);
     }
     all_query_results[query_num] = query_result;
     logger->info("Query {} finished, result was {}", query_num, *query_result);
     query_finished = true;
+    for(const auto& callback_pair : query_callbacks) {
+        callback_pair.second(query_num, *query_result);
+    }
     if(!pending_batch_queries.empty()) {
         auto next_query = pending_batch_queries.top();
         pending_batch_queries.pop();
@@ -123,4 +126,31 @@ void UtilityClient::end_query() {
     }
 }
 
+/**
+ * This allows other components running at the utility to be notified when a
+ * query they sent using this UtilityClient (e.g. through start_query) has
+ * completed.
+ * @param callback A function that will be called every time a query completes.
+ * Its arguments will be the query number and the result of that query (a
+ * vector of FixedPoint_t).
+ * @return A numeric ID that can be used to refer to this callback later.
+ */
+int UtilityClient::register_query_callback(const QueryCallback& callback) {
+    int next_id = query_callbacks.end()->first + 1;
+    query_callbacks.emplace(next_id, callback);
+    return next_id;
+}
+
+/**
+ *
+ * @param callback_id The numeric ID of a callback that was previously registered
+ * @return True if a callback was deregistered, false if there was no callback
+ * with that ID
+ */
+bool UtilityClient::deregister_query_callback(const int callback_id) {
+    int num_removed = query_callbacks.erase(callback_id);
+    return num_removed == 1;
+}
+
 } /* namespace psm */
+

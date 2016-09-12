@@ -33,6 +33,7 @@ class AggregationMessageValue : public MessageBody {
         AggregationMessageValue(AggregationMessageValue&&) = default;
         virtual ~AggregationMessageValue() = default;
         operator std::vector<FixedPoint_t>() const { return data; }
+        operator std::vector<FixedPoint_t>&() { return data; }
         //Boilerplate copy-and-pasting of the entire interface of std::vector follows
         decltype(data)::size_type size() const noexcept { return data.size(); }
         template<typename... A>
