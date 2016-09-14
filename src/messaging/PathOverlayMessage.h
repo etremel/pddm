@@ -8,8 +8,12 @@
 #pragma once
 
 #include <list>
+#include <ostream>
+#include <sstream>
+#include <string>
 
 #include "OverlayMessage.h"
+#include "../util/OStreams.h"
 
 namespace pddm {
 namespace messaging {
@@ -27,6 +31,16 @@ class PathOverlayMessage : public OverlayMessage {
             OverlayMessage(query_num, path.front(), body), remaining_path(++path.begin(), path.end()) { }
         virtual ~PathOverlayMessage() = default;
 };
+
+inline std::ostream& operator<< (std::ostream& out, const PathOverlayMessage& message) {
+    std::stringstream super_streamout;
+    super_streamout << static_cast<OverlayMessage>(message);
+    std::string output_string = super_streamout.str();
+    std::stringstream path_string_builder;
+    path_string_builder << "|RemainingPath=" << message.remaining_path;
+    output_string.insert(output_string.find("|Body="), path_string_builder.str());
+    return out << output_string;
+}
 
 }
 }

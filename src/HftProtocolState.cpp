@@ -26,6 +26,7 @@
 #include "TreeAggregationState.h"
 #include "util/Overlay.h"
 #include "util/OStreams.h"
+#include "util/Random.h"
 #include "util/DebugState.h"
 
 namespace pddm {
@@ -40,14 +41,9 @@ void HftProtocolState::start_query_impl(const std::shared_ptr<messaging::QueryRe
     auto signed_contribution = std::make_shared<messaging::ValueContribution>(*my_contribution);
 
     //Pick relay nodes for each proxy, selecting uniformly at random from non-proxy nodes
-    std::vector<int> id_range(num_meters);
-    std::iota(id_range.begin(), id_range.end(), 0);
-    std::vector<int> non_proxies;
     std::sort(my_contribution->proxies.begin(), my_contribution->proxies.end());
-    std::set_intersection(id_range.begin(), id_range.end(),
-            my_contribution->proxies.begin(), my_contribution->proxies.end(),
-            std::back_inserter(non_proxies));
-    std::shuffle(non_proxies.begin(), non_proxies.end(), random_engine);
+    std::vector<int> non_proxies = util::sample_range_excluding(0, num_meters,
+            my_contribution->proxies, my_contribution->proxies.size(), random_engine);
     std::map<int, int> relays;
     for(int i = 0; i < my_contribution->proxies.size(); ++i) {
         relays[my_contribution->proxies[i]] = non_proxies[i];
@@ -92,7 +88,7 @@ void HftProtocolState::handle_overlay_message_impl(const std::shared_ptr<messagi
 void HftProtocolState::handle_scatter_phase_message(const messaging::OverlayMessage& message) {
     if(auto wrapped_message = std::dynamic_pointer_cast<messaging::OverlayMessage>(message.body)) {
         //Just unwrap the message and save it for Gather
-        logger->debug("Meter {} got a relay message: {}", meter_id, *wrapped_message);
+        logger->debug("In round {}, meter {} got a relay message: {}", overlay_round, meter_id, *wrapped_message);
         relay_messages.emplace(wrapped_message);
     } else {
         logger->warn("Meter {} rejected a message because it was not a tuple to relay: {}", meter_id, message);
@@ -102,7 +98,7 @@ void HftProtocolState::handle_scatter_phase_message(const messaging::OverlayMess
 void HftProtocolState::handle_gather_phase_message(const messaging::OverlayMessage& message) {
     if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution>(message.body)) {
         if(contribution->value.query_num == my_contribution->query_num) {
-            logger->debug("Meter {} received proxy value: {}", meter_id, *contribution);
+            logger->debug("In round {}, meter {} received proxy value: {}", overlay_round, meter_id, *contribution);
             proxy_values.emplace(contribution);
         } else {
             logger->warn("Meter {} rejected a proxy value because it had the wrong query number: {}", meter_id, *contribution);

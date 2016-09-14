@@ -14,6 +14,14 @@
 namespace pddm {
 namespace messaging {
 
+std::ostream& operator<<(std::ostream& out, const AggregationMessageValue& v) {
+  if ( !v.empty() ) {
+    out << '[';
+    std::copy (v.begin(), v.end(), std::ostream_iterator<FixedPoint_t>(out, ", "));
+    out << "\b\b]";
+  }
+  return out;
+}
 
 void AggregationMessage::add_value(const pddm::FixedPoint_t& value, int num_contributors) {
     (*get_body())[0] += value;

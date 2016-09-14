@@ -70,14 +70,7 @@ class AggregationMessageValue : public MessageBody {
         }
 };
 
-inline std::ostream& operator<<(std::ostream& out, const AggregationMessageValue& v) {
-  if ( !v.empty() ) {
-    out << '[';
-    std::copy (v.begin(), v.end(), std::ostream_iterator<FixedPoint_t>(out, ", "));
-    out << "\b\b]";
-  }
-  return out;
-}
+std::ostream& operator<<(std::ostream& out, const AggregationMessageValue& v);
 
 /**
  * The messages sent in the Aggregate phase of all versions of the protocol.

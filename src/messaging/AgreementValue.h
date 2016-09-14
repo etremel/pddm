@@ -6,6 +6,9 @@
  */
 
 #pragma once
+
+#include <ostream>
+
 #include "MessageBody.h"
 #include "SignedValue.h"
 #include "../util/CryptoLibrary.h"
@@ -31,6 +34,11 @@ struct AgreementValue : public MessageBody {
             else return false;
         }
 };
+
+inline std::ostream& operator<<(std::ostream& out, const AgreementValue val) {
+    return out << "{AgreementValue: " << val.signed_value << " accepted by " << val.accepter_id << "}";
+}
+
 
 }  // namespace messaging
 

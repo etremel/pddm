@@ -25,6 +25,12 @@ class SignatureResponse;
 } /* namespace pddm */
 
 namespace pddm {
+namespace simulation {
+class Simulator;
+}
+}
+
+namespace pddm {
 
 /**
  * Represents the client code that runs on a single meter; it reads measurements
@@ -44,7 +50,9 @@ class MeterClient {
         /** A pointer to the meter interface this client should ask for measurements. */
         std::shared_ptr<Meter_t> meter;
 
-    public: //FIXME: Just for deadline purposes, let the simulator reach in and access these private members
+        //FIXME: Just for deadline purposes, let the simulator reach in and access private members
+        //(Actually, the MeterClient shouldn't have to know about the Simulator)
+        friend class simulation::Simulator;
 
         /** The component of the meter client that manages network operations. */
         NetworkClient_t network_client;

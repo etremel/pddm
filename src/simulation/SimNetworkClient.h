@@ -53,7 +53,7 @@ class SimNetworkClient : public NetworkClient {
         /** Message count tracker for simulation graphs. */
         int num_messages_sent;
 
-        void send(std::shared_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id);
+        bool send(std::shared_ptr<std::list<TypeMessagePair>> untyped_messages, const int recipient_id);
 
         void resume_from_busy();
 
@@ -69,10 +69,10 @@ class SimNetworkClient : public NetworkClient {
             num_messages_sent(0) {};
         virtual ~SimNetworkClient() = default;
         //Inherited from NetworkClient
-        void send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id);
-        void send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id);
-        void send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id);
-        void send(const std::shared_ptr<messaging::SignatureRequest>& message);
+        bool send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id);
+        bool send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id);
+        bool send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id);
+        bool send(const std::shared_ptr<messaging::SignatureRequest>& message);
 
         /** Called by the simulated Network when the meter should receive a message. */
         void receive_message(const messaging::MessageType& message_type, const std::shared_ptr<void>& message);

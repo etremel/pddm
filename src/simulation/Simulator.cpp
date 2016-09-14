@@ -24,12 +24,14 @@
 #include <utility>
 #include <vector>
 #include <memory>
-
+#include <spdlog/fmt/ostr.h>
 
 #include "../Configuration.h"
 #include "../messaging/QueryRequest.h"
+#include "../messaging/AggregationMessage.h"
 #include "../util/Money.h"
 #include "../util/Overlay.h"
+#include "../util/Random.h"
 #include "../UtilityClient.h"
 #include "Event.h"
 #include "IncomeLevel.h"
@@ -64,7 +66,7 @@ void Simulator::read_devices_from_files(const string& device_power_data_file, co
         std::getline(power_data, name, '\t'); //Deceptive name: this does not read a "line," just a single tab-delimited field
         //Now that we have a name, we can construct the device
         possible_devices.emplace(name, Device{});
-        Device& cur_device = possible_devices[name];
+        Device& cur_device = possible_devices.at(name);
         cur_device.name = name;
         //The rest of the line is tab-separated numbers representing power usage cycles, followed by the standby load
         //Fortunately, the default delimiter for istream's operator>> is "any whitespace"
@@ -142,7 +144,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
     utility_client = std::make_unique<UtilityClient>(modulus, utility_network_client_builder(sim_network),
             crypto_library_builder_utility(*sim_crypto), timer_manager_builder_utility(event_manager));
     using namespace std::placeholders;
-    utility_client->register_query_callback(std::bind(&Simulator::record_query_completion_time, this, _1, _2));
+    utility_client->register_query_callback(std::bind(&Simulator::query_finished_callback, this, _1, _2));
     PriceFunction sim_energy_price = [](const int time_of_day) {
         if(time_of_day > 17 && time_of_day < 20) {
             return Money(0.0734);
@@ -191,8 +193,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
     for(size_t double_id_pointer = 0; double_id_pointer < modulus - meter_clients.size(); ++double_id_pointer) {
         meter_clients[double_id_pointer]->set_second_id(current_id);
         virtual_meter_clients.emplace(current_id, std::ref(*meter_clients[double_id_pointer]));
-        //Ugh, if it wasn't for needing to do this, I wouldn't have to expose MeterClient's NetworkClient.
-        sim_network->connect_meter(meter_clients[double_id_pointer]->get_network_client(), current_id);
+        sim_network->connect_meter(meter_clients[double_id_pointer]->network_client, current_id);
         current_id++;
     }
 
@@ -212,8 +213,10 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
                 long query_start_time = timesteps::millisecond(timestep) + 1;
                 auto test_query = std::make_shared<QueryRequest>(QueryType::AVAILABLE_OFFSET_BREAKDOWN, 60, 0);
                 hour_query_numbers[0] = query_start_time;
-                event_manager.submit([test_query, this](){ utility_client->start_query(test_query); },
-                        query_start_time, "Start query from utility");
+                event_manager.submit([test_query, this](){
+                    fail_meters();
+                    utility_client->start_query(test_query);
+                }, query_start_time, "Start query from utility");
             }
         }
     } else {
@@ -266,7 +269,12 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
     }
 }
 
-void Simulator::record_query_completion_time(const int query_num, const std::vector<FixedPoint_t>& result) {
+/**
+ * It records the completion time of the query and, if necessary, resets simulated meter failures.
+ * @param query_num The number of the query that completed.
+ * @param result The result of the query.
+ */
+void Simulator::query_finished_callback(const int query_num, const std::shared_ptr<messaging::AggregationMessageValue>& result) {
     //query_num is a key in either hour_query_numbers, half_hour_query_numbers, or quarter_hour_query_numbers
     auto query_num_find = hour_query_numbers.find(query_num);
     if(query_num_find == hour_query_numbers.end()) {
@@ -279,6 +287,8 @@ void Simulator::record_query_completion_time(const int query_num, const std::vec
     //Safer than push_back in case we ever get query results out of numeric order
     query_round_trip_times.resize(query_num + 1);
     query_round_trip_times[query_num] = event_manager.get_current_time() - query_start_time;
+
+//    reset_meter_failures();
 }
 
 void Simulator::write_query_times(const std::string& file_timestamp) const {
@@ -291,11 +301,11 @@ void Simulator::write_query_times(const std::string& file_timestamp) const {
         filename << "ct_";
     }
     if(METER_FAILURES_PER_QUERY == 0) {
-        filename << "query_times_nofail_";
+        filename << "query_times_nofail";
     } else {
         filename << "query_times_failures";
     }
-    filename << modulus << "_" << file_timestamp << ".csv";
+    filename << "_" << modulus << "_" << file_timestamp << ".csv";
     std::ofstream query_times_file(filename.str());
     if(query_round_trip_times.size() == 1) {
         query_times_file << modulus << "," << query_round_trip_times[0] << std::endl;
@@ -376,13 +386,29 @@ void Simulator::write_message_counts(const std::string& file_timestamp) const {
     if(METER_FAILURES_PER_QUERY == 0) {
         filename << "nofail";
     } else {
-        filename << "failures_";
+        filename << "failures";
     }
     filename << "_" << modulus << "_" << file_timestamp << ".csv";
     std::ofstream message_file(filename.str());
     for(unsigned int meter_id = 0; meter_id < meter_clients.size(); ++meter_id) {
         message_file << meter_id << "," << meter_clients[meter_id]->network_client.get_total_messages_sent() << std::endl;
     }
+}
+
+void Simulator::fail_meters() {
+    if(METER_FAILURES_PER_QUERY < 1)
+        return;
+    auto failed_ids = util::pick_without_replacement(modulus, METER_FAILURES_PER_QUERY, random_engine);
+    logger->info("Failing meters: {}", failed_ids);
+    for(const auto& id : failed_ids) {
+        sim_network->mark_failed(id);
+    }
+}
+
+void Simulator::reset_meter_failures() {
+    if(METER_FAILURES_PER_QUERY < 1)
+        return;
+    sim_network->reset_failures();
 }
 
 void Simulator::run(const std::set<QueryMode>& query_options) {

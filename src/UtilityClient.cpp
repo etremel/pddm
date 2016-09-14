@@ -114,10 +114,14 @@ void UtilityClient::end_query() {
         all_query_results.resize(query_num+1);
     }
     all_query_results[query_num] = query_result;
-    logger->info("Query {} finished, result was {}", query_num, *query_result);
+    if(query_result == nullptr) {
+        logger->error("Query {} failed! No results received by timeout.", query_num);
+    } else {
+        logger->info("Query {} finished, result was {}", query_num, *query_result);
+    }
     query_finished = true;
     for(const auto& callback_pair : query_callbacks) {
-        callback_pair.second(query_num, *query_result);
+        callback_pair.second(query_num, query_result);
     }
     if(!pending_batch_queries.empty()) {
         auto next_query = pending_batch_queries.top();

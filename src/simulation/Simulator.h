@@ -14,6 +14,7 @@
 #include <string>
 #include <map>
 #include <set>
+#include <spdlog/spdlog.h>
 
 #include "../MeterClient.h"
 #include "../UtilityClient.h"
@@ -22,12 +23,19 @@
 #include "Device.h"
 
 namespace pddm {
+namespace messaging {
+class AggregationMessageValue;
+}
+}
+
+namespace pddm {
 namespace simulation {
 
 enum class QueryMode { HOUR_QUERIES, HALF_HOUR_QUERIES, QUARTER_HOUR_QUERIES, ONLY_ONE_QUERY};
 
 class Simulator {
     private:
+        std::shared_ptr<spdlog::logger> logger;
         EventManager event_manager;
         std::shared_ptr<Network> sim_network;
         int modulus;
@@ -62,21 +70,36 @@ class Simulator {
 
         std::vector<int> query_round_trip_times;
 
+        /** Helper method for setup; parses a set of configuration files to get
+         * the set of possible devices for simulated meters. */
         void read_devices_from_files(const std::string& device_power_data_file,
                 const std::string& device_frequency_data_file, const std::string& device_probability_data_file,
                 const std::string& device_saturation_data_file);
 
-        void record_query_completion_time(const int query_num, const std::vector<FixedPoint_t>& result);
+        /** Helper method for run(); generates events that cause the utility to run queries. */
+        void setup_queries(const std::set<QueryMode>& query_options);
+        /** This function is registered with the simulated utility to be called
+         * each time a query completes. */
+        void query_finished_callback(const int query_num, const std::shared_ptr<messaging::AggregationMessageValue>& result);
+
+        /** Randomly chooses METER_FAILURES_PER_QUERY meters to mark as "failed." */
+        void fail_meters();
+        /** Sets all meters to non-failed. */
+        void reset_meter_failures();
+        //Output-writing functions
         void write_query_times(const std::string& file_timestamp) const;
         void write_query_history(const std::string& file_timestamp) const;
         void write_message_counts(const std::string& file_timestamp) const;
 
     public:
-        Simulator() : event_manager(), sim_network(std::make_shared<Network>(event_manager)), modulus(0), sim_timers(event_manager) {}
-        void setup_simulation(int num_homes, const std::string& device_power_data_file,
+        Simulator() : logger(spdlog::get("global_logger")), event_manager(), sim_network(std::make_shared<Network>(event_manager)), modulus(0), sim_timers(event_manager) {}
+        /** Initializes the simulation by creating num_homes simulated meters and
+         * connecting them to the simulated network. */
+        void setup_simulation(const int num_homes, const std::string& device_power_data_file,
                 const std::string& device_frequency_data_file, const std::string& device_probability_data_file,
                 const std::string& device_saturation_data_file);
-        void setup_queries(const std::set<QueryMode>& query_options);
+        /** Runs the simulation, assuming it has been initialized, generating queries
+         * according to the provided query_options. */
         void run(const std::set<QueryMode>& query_options);
 };
 

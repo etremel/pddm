@@ -64,9 +64,11 @@ class Network {
         /** Finishes installing meters; this must be called after the last call to connect_meter. */
         void finish_setup();
         /** Sends a stream of messages to a recipient identified by its ID. */
-        void send(const std::list<std::pair<messaging::MessageType, std::shared_ptr<void>>>& messages, const int recipient_id);
+        bool send(const std::list<std::pair<messaging::MessageType, std::shared_ptr<void>>>& messages, const int sender_id, const int recipient_id);
         /** Marks a meter as "failed" for the duration of this simulation; it will not receive any messages. */
         void mark_failed(const int meter_id);
+        /** Gets the failure status of a meter according to the simulation. */
+        bool is_failed(const int meter_id) const;
         /** Marks all meters as non-failed. */
         void reset_failures();
 };

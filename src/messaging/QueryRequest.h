@@ -17,6 +17,26 @@ namespace messaging {
 
 enum class QueryType {CURR_USAGE_SUM, CURR_USAGE_HISTOGRAM, AVAILABLE_OFFSET_BREAKDOWN, CUMULATIVE_USAGE, PROJECTED_SUM, PROJECTED_HISTOGRAM};
 
+//I can't believe there's no built-in function for printing out the value of an enum class. And they say Java is full of boilerplate?
+inline std::ostream& operator<<(std::ostream& out, const QueryType& type) {
+    switch(type) {
+    case QueryType::CURR_USAGE_SUM:
+        return out << "CURR_USAGE_SUM";
+    case QueryType::CURR_USAGE_HISTOGRAM:
+        return out << "CURR_USAGE_HISTOGRAM";
+    case QueryType::AVAILABLE_OFFSET_BREAKDOWN:
+        return out << "AVAILABLE_OFFSET_BREAKDOWN";
+    case QueryType::CUMULATIVE_USAGE:
+        return out << "CUMULATIVE_USAGE";
+    case QueryType::PROJECTED_SUM:
+        return out << "PROJECTED_SUM";
+    case QueryType::PROJECTED_HISTOGRAM:
+        return out << "PROJECTED_HISTOGRAM";
+    default:
+        return out;
+    }
+}
+
 constexpr bool is_single_valued_query(const QueryType& query_type) {
     return query_type == QueryType::CURR_USAGE_SUM || query_type == QueryType::CUMULATIVE_USAGE || query_type == QueryType::PROJECTED_SUM;
 }
@@ -41,6 +61,10 @@ class QueryRequest: public MessageBody {
             else return false;
         }
 };
+
+inline std::ostream& operator<<(std::ostream& out, const QueryRequest& qr) {
+    return out << "{QueryRequest: Type=" << qr.request_type << " | query_number=" << qr.query_number << " | time_window=" << qr.time_window << " }";
+}
 
 struct QueryNumLess {
         inline bool operator()(const QueryRequest& lhs, const QueryRequest& rhs) const {

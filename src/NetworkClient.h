@@ -31,23 +31,26 @@ class NetworkClient {
          * in the list.
          * @param messages The messages to send.
          * @param recipient_id The ID of the recipient.
+         * @return true if the send was successful, false if a connection could not be made.
          */
-        virtual void send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id) = 0;
+        virtual bool send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id) = 0;
         /**
          * Sends an AggregationMessage over the network to another meter (or the
          * utility), identified by its ID.
          * @param message The message to send
          * @param recipient_id The ID of the recipient
+         * @return true if the send was successful, false if a connection could not be made.
          */
-        virtual void send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id) = 0;
+        virtual bool send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id) = 0;
         /**
          * Sends a PingMessage over the network to another meter
          * @param message The message to send
          * @param recipient_id The ID of the recipient
+         * @return true if the send was successful, false if a connection could not be made.
          */
-        virtual void send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) = 0;
+        virtual bool send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) = 0;
         /** Sends a signature request message to the utility. */
-        virtual void send(const std::shared_ptr<messaging::SignatureRequest>& message) = 0;
+        virtual bool send(const std::shared_ptr<messaging::SignatureRequest>& message) = 0;
 };
 
 inline NetworkClient::~NetworkClient() { }

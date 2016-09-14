@@ -7,12 +7,13 @@
 
 #pragma once
 
-#include <cstdint>
+#include <iostream>
 #include <map>
 #include <memory>
+#include <utility>
 
-#include "ValueContribution.h"
 #include "../util/CryptoLibrary.h"
+#include "ValueContribution.h"
 
 namespace pddm {
 namespace messaging {
@@ -30,6 +31,15 @@ struct SignedValue : public MessageBody {
             else return false;
         }
 };
+
+inline std::ostream& operator<<(std::ostream& out, const SignedValue& s) {
+    out << "{SignedValue: " << *s.value << "| Signatures from: " << '[';
+    for(const auto& id_sig : s.signatures) {
+        out << id_sig.first << ", ";
+    }
+    out << "\b\b]" << "}";
+    return out;
+}
 
 }
 }

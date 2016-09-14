@@ -104,6 +104,7 @@ template<typename Impl>
 void ProtocolState<Impl>::handle_round_timeout() {
     if(ping_response_from_predecessor) {
         ping_response_from_predecessor = false;
+        logger->trace("Meter {} continuing to wait for round {}, got a response from {} recently", meter_id, overlay_round, util::gossip_predecessor(meter_id, overlay_round, num_meters));
         round_timeout_timer = timers.register_timer(OVERLAY_ROUND_TIMEOUT, [this](){handle_round_timeout();});
         auto ping = std::make_shared<messaging::PingMessage>(meter_id, false);
         network.send(ping, util::gossip_predecessor(meter_id, overlay_round, num_meters));
@@ -130,10 +131,13 @@ void ProtocolState<Impl>::super_end_overlay_round() {
     //there's no point waiting for the timeout
     const int predecessor = util::gossip_predecessor(meter_id, overlay_round, num_meters);
     if(failed_meter_ids.find(predecessor) != failed_meter_ids.end()) {
+        logger->trace("Meter {} ending round early, predecessor {} is dead", meter_id, predecessor);
         end_overlay_round();
     } else {
         //Send a ping to the predecessor meter to see if it's still alive
         auto ping = std::make_shared<messaging::PingMessage>(meter_id, false);
+        //send will always return success for a ping, since it's an unreliable (UDP/ICMP) packet,
+        //so don't bother checking return value
         network.send(ping, predecessor);
 
         //Check future messages in case messages for the next round have already been received
@@ -189,7 +193,11 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
     //Now, send all the messages, marking the last one as final
     if(!messages_to_send.empty()) {
         messages_to_send.back()->is_final_message = true;
-        network.send(messages_to_send, comm_target);
+        auto success = network.send(messages_to_send, comm_target);
+        if(!success) {
+            logger->debug("Meter {} detected that meter {} is down", meter_id, comm_target);
+            failed_meter_ids.emplace(comm_target);
+        }
     } else {
         //If we didn't send anything this round, send an empty message to ensure the target can advance his round
         auto dummy_message = std::make_shared<messaging::OverlayMessage>(
@@ -197,7 +205,11 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
         auto dummy_transport = std::make_shared<messaging::OverlayTransportMessage>(
                 meter_id, overlay_round, true, dummy_message);
         logger->trace("Meter {} sending a dummy message to meter {}", meter_id, comm_target);
-        network.send({dummy_transport}, comm_target);
+        auto success = network.send({dummy_transport}, comm_target);
+        if(!success) {
+            logger->debug("Meter {} detected that meter {} is down", meter_id, comm_target);
+            failed_meter_ids.emplace(comm_target);
+        }
     }
 }
 
@@ -212,7 +224,6 @@ void ProtocolState<Impl>::send_overlay_message_batch() {
  */
 template<typename Impl>
 void ProtocolState<Impl>::handle_overlay_message(const std::shared_ptr<messaging::OverlayTransportMessage>& message) {
-    logger->trace("Meter {} received an overlay message: {}", meter_id, *message);
     if(impl_this->is_in_overlay_phase()) {
         timers.cancel_timer(round_timeout_timer);
         round_timeout_timer = timers.register_timer(OVERLAY_ROUND_TIMEOUT, [this](){handle_round_timeout();});

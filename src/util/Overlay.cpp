@@ -18,8 +18,15 @@
 namespace pddm {
 namespace util {
 
-std::mt19937 random_engine;
+static std::mt19937 random_engine;
 
+/**
+ * Efficient modpow implementation found on StackOverflow
+ * @param num The base
+ * @param pow The exponent
+ * @param mod The modulus
+ * @return (num ^ pow) % mod
+ */
 uint32_t mod_pow(uint32_t num, uint32_t pow, uint32_t mod) {
     uint64_t result = 1;
     while (pow > 0) {
@@ -35,24 +42,36 @@ int gossip_target(const int source_id, const int round, const int group_size) {
     //Memo table ordering is (N, t, i) -> i + 2^t mod N
     //This is copied from the Java version, and it may be possible to reorder the tuple
     static std::map<std::tuple<int, int, int>, int> memo_table;
-    auto memo_value = memo_table.find(std::tie(group_size, round, source_id));
+    auto memo_value = memo_table.find(std::make_tuple(group_size, round, source_id));
     if(memo_value != memo_table.end()) {
         return memo_value->second;
     }
     int target = (source_id + mod_pow(2, round, group_size)) % group_size;
-    memo_table[std::tie(group_size, round, source_id)] = target;
+    memo_table.emplace(std::make_tuple(group_size, round, source_id), target);
     return target;
+}
+
+/**
+ * "Safe" modular subtraction, which correctly wraps around negative values of
+ * x-y (unlike the built-in % operator). Copied from StackOverflow.
+ * @param x
+ * @param y
+ * @param m
+ * @return (x - y) % m, correctly accounting for (x - y) < 0
+ */
+inline int mod_subtract(const int x, const int y, const int m) {
+    return ((x - y) % m) + ((x >= y) ? 0 : m);
 }
 
 int gossip_predecessor(const int target_id, const int round, const int group_size) {
     //Memo table ordering is (N, t, j) -> j - 2^t mod N
     static std::map<std::tuple<int, int, int>, int> memo_table;
-    auto memo_value = memo_table.find(std::tie(group_size, round, target_id));
+    auto memo_value = memo_table.find(std::make_tuple(group_size, round, target_id));
     if(memo_value != memo_table.end()) {
         return memo_value->second;
     }
-    int source = (target_id - mod_pow(2, round, group_size)) % group_size;
-    memo_table[std::tie(group_size, round, target_id)] = source;
+    int source = mod_subtract(target_id, mod_pow(2, round, group_size), group_size);
+    memo_table.emplace(std::make_tuple(group_size, round, target_id), source);
     return source;
 }
 

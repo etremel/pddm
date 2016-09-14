@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <memory>
 #include <ostream>
+
 #include "MessageBody.h"
 #include "../util/Hash.h"
 
@@ -43,11 +45,7 @@ public:
 
 };
 
-inline std::ostream& operator<< (std::ostream& out, const OverlayMessage& message) {
-    out << "{QueryNum=" << message.query_num << "|Destination=" << message.destination;
-//            << "|Body=" << *message.body << "}";
-    return out;
-}
+std::ostream& operator<< (std::ostream& out, const OverlayMessage& message);
 
 } /* namespace messaging */
 } /* namespace psm */

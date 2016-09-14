@@ -23,7 +23,7 @@ namespace simulation {
 
 void SimUtilityNetworkClient::send(const TypeMessagePair& untyped_message, const int meter_id) {
     std::list<TypeMessagePair> trivial_list {untyped_message};
-    network->send(trivial_list, meter_id);
+    network->send(trivial_list, -1, meter_id);
 }
 
 void SimUtilityNetworkClient::send(const std::shared_ptr<messaging::QueryRequest>& message, const int recipient_id) {
@@ -42,6 +42,8 @@ void SimUtilityNetworkClient::receive_message(const messaging::MessageType& mess
         break;
     case MessageType::SIGNATURE_REQUEST:
         utility_client.handle_message(static_pointer_cast<SignatureRequest>(message));
+        break;
+    default:
         break;
     }
 }
