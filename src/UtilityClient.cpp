@@ -14,6 +14,7 @@ using std::shared_ptr;
 using namespace messaging;
 
 void UtilityClient::handle_message(const std::shared_ptr<messaging::AggregationMessage>& message) {
+    logger->trace("Utility received an aggregation message: {}", *message);
     curr_query_results.insert(message);
     //Clear the timeout, since we got a message
     timer_library.cancel_timer(query_timeout_timer);
@@ -25,15 +26,9 @@ void UtilityClient::handle_message(const std::shared_ptr<messaging::AggregationM
     }
     //If the query isn't finished, set a new timeout for the next result message
     if(!query_finished) {
-        int messages_for_aggregation = 0;
-        if(query_protocol == QueryProtocol::BFT) {
-            messages_for_aggregation = (int) std::ceil(std::log2((double) num_meters / (double)(2 * ProtocolState_t::FAILURES_TOLERATED + 1)));
-        } else {
-            messages_for_aggregation = (int) std::ceil(std::log2((double) num_meters / (double)(ProtocolState_t::FAILURES_TOLERATED + 1)));
-        }
-        query_timeout_timer = timer_library.register_timer(messages_for_aggregation * NETWORK_ROUNDTRIP_TIMEOUT,
+        query_timeout_timer = timer_library.register_timer(query_timeout_time,
                 [this](){
-                    logger->debug("Utility timed out waiting for query {}", query_num);
+                    logger->debug("Utility timed out waiting for query {} after receiving {} messages", query_num, curr_query_results.size());
                     end_query();
         });
     }
@@ -68,7 +63,7 @@ void UtilityClient::start_query(const std::shared_ptr<messaging::QueryRequest>& 
                 + (int) std::ceil(std::log2(num_meters / (double)(ProtocolState_t::FAILURES_TOLERATED + 1)));
     }
     query_timeout_timer = timer_library.register_timer(rounds_for_query * NETWORK_ROUNDTRIP_TIMEOUT, [this](){
-        logger->debug("Utility timed out waiting for query {}", query_num);
+        logger->debug("Utility timed out waiting for query {} after receiving no messages", query_num);
         end_query();
     });
 }
@@ -156,5 +151,14 @@ bool UtilityClient::deregister_query_callback(const int callback_id) {
     return num_removed == 1;
 }
 
+int UtilityClient::compute_timeout_time(const int num_meters) {
+    int messages_for_aggregation = 0;
+    if(query_protocol == QueryProtocol::BFT) {
+        messages_for_aggregation = (int) std::ceil(std::log2((double) num_meters / (double)(2 * ProtocolState_t::FAILURES_TOLERATED + 1)));
+    } else {
+        messages_for_aggregation = (int) std::ceil(std::log2((double) num_meters / (double)(ProtocolState_t::FAILURES_TOLERATED + 1)));
+    }
+    return messages_for_aggregation * NETWORK_ROUNDTRIP_TIMEOUT;
+}
 } /* namespace psm */
 

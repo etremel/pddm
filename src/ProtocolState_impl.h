@@ -104,10 +104,15 @@ template<typename Impl>
 void ProtocolState<Impl>::handle_round_timeout() {
     if(ping_response_from_predecessor) {
         ping_response_from_predecessor = false;
-        logger->trace("Meter {} continuing to wait for round {}, got a response from {} recently", meter_id, overlay_round, util::gossip_predecessor(meter_id, overlay_round, num_meters));
+        const int predecessor = util::gossip_predecessor(meter_id, overlay_round, num_meters);
+        logger->trace("Meter {} continuing to wait for round {}, got a response from {} recently", meter_id, overlay_round, predecessor);
         round_timeout_timer = timers.register_timer(OVERLAY_ROUND_TIMEOUT, [this](){handle_round_timeout();});
         auto ping = std::make_shared<messaging::PingMessage>(meter_id, false);
-        network.send(ping, util::gossip_predecessor(meter_id, overlay_round, num_meters));
+        auto success = network.send(ping, predecessor);
+        if(!success) {
+            logger->debug("Meter {} detected that meter {} just went down after responding to a ping", meter_id, predecessor);
+            failed_meter_ids.emplace(predecessor);
+        }
     } else {
         logger->debug("Meter {} timed out waiting for an overlay message for round {}", meter_id, overlay_round);
         end_overlay_round();
@@ -117,6 +122,7 @@ void ProtocolState<Impl>::handle_round_timeout() {
 template<typename Impl>
 void ProtocolState<Impl>::super_end_overlay_round() {
     timers.cancel_timer(round_timeout_timer);
+    logger->trace("Meter {} ending round {} at time {}", meter_id, overlay_round, util::print_time());
     //If the last round is ending, the only thing we need to do is cancel the timeout
     if(is_last_round)
         return;
@@ -127,38 +133,46 @@ void ProtocolState<Impl>::super_end_overlay_round() {
     send_overlay_message_batch();
 
     round_timeout_timer = timers.register_timer(OVERLAY_ROUND_TIMEOUT, [this](){handle_round_timeout();});
-    //If the meter we're waiting for in the next round is known to be dead, immediately end it;
-    //there's no point waiting for the timeout
+
     const int predecessor = util::gossip_predecessor(meter_id, overlay_round, num_meters);
-    if(failed_meter_ids.find(predecessor) != failed_meter_ids.end()) {
-        logger->trace("Meter {} ending round early, predecessor {} is dead", meter_id, predecessor);
-        end_overlay_round();
-    } else {
+    if(failed_meter_ids.find(predecessor) == failed_meter_ids.end()) {
         //Send a ping to the predecessor meter to see if it's still alive
         auto ping = std::make_shared<messaging::PingMessage>(meter_id, false);
-        //send will always return success for a ping, since it's an unreliable (UDP/ICMP) packet,
-        //so don't bother checking return value
-        network.send(ping, predecessor);
-
-        //Check future messages in case messages for the next round have already been received
-        ptr_list<messaging::OverlayTransportMessage> received_messages;
-        for(auto message_iter = future_overlay_messages.begin();
-                message_iter != future_overlay_messages.end(); ) {
-            if((*message_iter)->sender_round == overlay_round
-                    && std::static_pointer_cast<messaging::OverlayMessage>((*message_iter)->body)->query_num ==
-                            get_current_query_num()) {
-                received_messages.emplace_back(*message_iter);
-                message_iter = future_overlay_messages.erase(message_iter);
-            } else {
-                ++message_iter;
-            }
+        //This turns out to be really important: Checking whether this ping succeeds
+        //is the most common way of detecting that a node has failed
+        auto success = network.send(ping, predecessor);
+        if(!success) {
+            logger->debug("Meter {} detected that meter {} is down", meter_id, predecessor);
+            failed_meter_ids.emplace(predecessor);
         }
+    }
 
-        //This must happen last, because end_overlay_round() might be called from inside
-        //one of these handle()s, so we might already be another round ahead when they return
-        for(const auto& message : received_messages) {
-            handle_overlay_message(message);
+    //Check future messages in case messages for the next round have already been received
+    ptr_list<messaging::OverlayTransportMessage> received_messages;
+    for(auto message_iter = future_overlay_messages.begin();
+            message_iter != future_overlay_messages.end(); ) {
+        if((*message_iter)->sender_round == overlay_round
+                && std::static_pointer_cast<messaging::OverlayMessage>((*message_iter)->body)->query_num ==
+                        get_current_query_num()) {
+            received_messages.emplace_back(*message_iter);
+            message_iter = future_overlay_messages.erase(message_iter);
+        } else {
+            ++message_iter;
         }
+    }
+
+    //Cache the last known value of overlay_round, because end_overlay_round()
+    //might be called from inside one of these handle()s, so we might already
+    //be another round ahead when they return
+    const int local_overlay_round = overlay_round;
+    for(const auto& message : received_messages) {
+        handle_overlay_message(message);
+    }
+    //If end_overlay_round() hasn't already been called for another reason,
+    //and the predecessor is known to be dead, immediately end the current round
+    if(local_overlay_round == overlay_round && failed_meter_ids.find(predecessor) != failed_meter_ids.end()) {
+        logger->trace("Meter {} ending round early, predecessor {} is dead", meter_id, predecessor);
+        end_overlay_round();
     }
 
 }
@@ -258,6 +272,7 @@ void ProtocolState<Impl>::handle_ping_message(const std::shared_ptr<messaging::P
     if(!message->is_response) {
         //If this is a ping request, send a response back
         auto reply = std::make_shared<messaging::PingMessage>(meter_id, true);
+        logger->trace("Meter {} replying to a ping from {}", meter_id, message->sender_id);
         network.send(reply, message->sender_id);
     } else if (message->sender_id == util::gossip_predecessor(meter_id, overlay_round, num_meters)) {
         //If this is a ping response and we still care about it

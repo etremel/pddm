@@ -136,6 +136,9 @@ inline bool device_already_picked(const std::list<Device>& existing_devices, con
 void Simulator::setup_simulation(int num_homes, const string& device_power_data_file, const string& device_frequency_data_file,
         const string& device_probability_data_file, const string& device_saturation_data_file) {
     read_devices_from_files(device_power_data_file, device_frequency_data_file, device_probability_data_file, device_saturation_data_file);
+
+    util::debug_state().event_manager = &event_manager;
+
     modulus = util::get_valid_prime_modulus(num_homes);
     ProtocolState_t::init_failures_tolerated(modulus);
     //Initialize the SimCrypto instance
@@ -199,7 +202,6 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
 
     sim_network->finish_setup();
     sim_crypto->finish_setup();
-
 }
 
 void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
@@ -399,6 +401,9 @@ void Simulator::fail_meters() {
     if(METER_FAILURES_PER_QUERY < 1)
         return;
     auto failed_ids = util::pick_without_replacement(modulus, METER_FAILURES_PER_QUERY, random_engine);
+//    if(METER_FAILURES_PER_QUERY == 7) {
+//        failed_ids = {6, 22, 33, 63, 64, 68, 81};
+//    }
     logger->info("Failing meters: {}", failed_ids);
     for(const auto& id : failed_ids) {
         sim_network->mark_failed(id);

@@ -16,4 +16,5 @@
 #include "simulation/Meter.h"
 #include "simulation/SimCryptoWrapper.h"
 #include "simulation/SimTimerManager.h"
-#include "HftProtocolState.h"
+//#include "HftProtocolState.h"
+#include "CtProtocolState.h"

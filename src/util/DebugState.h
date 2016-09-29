@@ -1,6 +1,8 @@
 /**
  * @file DebugState.h
- *
+ * Global state and some associated functions used for debugging the simulation.
+ * This should be removed from ProtocolState and its subclasses once the simulation
+ * works, because it will break if MeterClient is compiled in non-simulated mode!
  * @date Sep 10, 2016
  * @author edward
  */
@@ -11,12 +13,15 @@
 #include <memory>
 
 #include "../simulation/SimParameters.h"
+#include "../simulation/EventManager.h"
 
 namespace pddm {
 
 namespace util {
 
 struct DebugState {
+        //EventManager is a value-type wholly contained within Simulator, so we have to use a dangerous pointer to it here
+        simulation::EventManager* event_manager;
         int num_finished_shuffle;
         int num_finished_echo;
         int num_finished_agreement;
@@ -34,6 +39,12 @@ inline void init_debug_state() {
     debug_state().num_finished_aggregate = 0;
     debug_state().num_finished_scatter = 0;
     debug_state().num_finished_gather = 0;
+}
+
+inline std::string print_time() {
+    if(!debug_state().event_manager)
+        return "null";
+    return std::to_string(debug_state().event_manager->get_current_time());
 }
 
 inline void print_shuffle_status(const std::shared_ptr<spdlog::logger>& logger, const int num_meters) {

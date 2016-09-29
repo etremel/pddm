@@ -35,6 +35,9 @@ class UtilityClient {
         UtilityNetworkClient_t network;
         CryptoLibrary_t crypto_library;
         TimerManager_t timer_library;
+        /** Number of milliseconds to wait for a query timeout interval */
+        const int query_timeout_time;
+        /** Handle referring to the timer that was set to time-out the current query*/
         int query_timeout_timer;
         int query_num;
         bool query_finished;
@@ -50,6 +53,7 @@ class UtilityClient {
                 util::ptr_comparator<messaging::QueryRequest, messaging::QueryNumGreater>
         >;
         query_priority_queue pending_batch_queries;
+        static int compute_timeout_time(const int num_meters);
     public:
         UtilityClient(const int num_meters, const std::function<UtilityNetworkClient_t (UtilityClient&)>& network_builder,
                 const std::function<CryptoLibrary_t (UtilityClient&)>& crypto_library_builder,
@@ -59,6 +63,7 @@ class UtilityClient {
                     network(network_builder(*this)),
                     crypto_library(crypto_library_builder(*this)),
                     timer_library(timer_library_builder(*this)),
+                    query_timeout_time(compute_timeout_time(num_meters)),
                     query_timeout_timer(0),
                     query_num(-1),
                     query_finished(false) {}
