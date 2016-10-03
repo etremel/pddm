@@ -135,7 +135,7 @@ void UtilityClient::end_query() {
  * @return A numeric ID that can be used to refer to this callback later.
  */
 int UtilityClient::register_query_callback(const QueryCallback& callback) {
-    int next_id = query_callbacks.end()->first + 1;
+    int next_id = query_callbacks.empty() ? 0 : query_callbacks.rbegin()->first + 1;
     query_callbacks.emplace(next_id, callback);
     return next_id;
 }

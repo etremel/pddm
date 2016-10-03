@@ -42,7 +42,10 @@ void Network::connect_utility(SimUtilityNetworkClient& utility) {
 void Network::finish_setup() {
     if(!meter_clients.empty())
         throw std::runtime_error("finish_setup called more than once!");
-    for(int id = 0; id < meter_clients_setup.end()->first; ++id) {
+	if (meter_clients_setup.empty())
+		throw std::runtime_error("No meter clients were added to the network!");
+	const int last_id = meter_clients_setup.rbegin()->first;
+    for(int id = 0; id <= last_id; ++id) {
         meter_clients.emplace_back(meter_clients_setup.at(id));
     }
     meter_clients_setup.clear();

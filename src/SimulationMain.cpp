@@ -49,5 +49,6 @@ int main(int argc, char** argv) {
 //    simulation::METER_FAILURES_PER_QUERY = ProtocolState_t::FAILURES_TOLERATED;
 //    sim.run(std::set<simulation::QueryMode>{simulation::QueryMode::ONLY_ONE_QUERY});
 
+	return 0;
 }
 
