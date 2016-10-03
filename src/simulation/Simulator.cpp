@@ -73,13 +73,13 @@ void Simulator::read_devices_from_files(const string& device_power_data_file, co
         //Unfortunately, the only way to use istream_iterator is to read the whole line, including the standby load, into one vector
         std::vector<int> mixed_cycle_data{std::istream_iterator<int>{power_data}, std::istream_iterator<int>{}};
         //Take the standby load value off the end of the vector, leaving just the cycle data
-        cur_device.standby_load = FixedPoint_t{static_cast<long>(mixed_cycle_data.back())};
+        cur_device.standby_load = FixedPoint_t{static_cast<int64_t>(mixed_cycle_data.back())};
         mixed_cycle_data.pop_back();
         //Cycle data alternates between load per cycle and minutes per cycle
         cur_device.load_per_cycle.resize(mixed_cycle_data.size()/2);
         cur_device.time_per_cycle.resize(cur_device.load_per_cycle.size());
         for(size_t i = 0; i < mixed_cycle_data.size(); i += 2) {
-            cur_device.load_per_cycle[i/2] = FixedPoint_t(static_cast<long>(mixed_cycle_data[i]));
+            cur_device.load_per_cycle[i/2] = FixedPoint_t(static_cast<int64_t>(mixed_cycle_data[i]));
             cur_device.time_per_cycle[i/2] = mixed_cycle_data[i+1];
         }
     }

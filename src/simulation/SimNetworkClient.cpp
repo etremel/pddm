@@ -183,6 +183,9 @@ void SimNetworkClient::resume_from_busy() {
         case MessageType::SIGNATURE_RESPONSE:
             meter_client.handle_message(static_pointer_cast<SignatureResponse>(message));
             break;
+		default:
+			logger->warn("Meter {} dropped a message it didn't know how to handle.", meter_client.meter_id);
+			break;
         }
         incoming_message_queue.pop();
     }

@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <type_traits>
 #include <random>
+#include <numeric>
 
 namespace pddm {
 namespace util {

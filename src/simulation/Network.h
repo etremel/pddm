@@ -13,13 +13,13 @@
 #include <random>
 #include <utility>
 #include <functional>
-#include <experimental/optional>
 #include <map>
+#include <spdlog/spdlog.h>
+#include <experimental/optional>
 
 #include "EventManager.h"
 #include "../messaging/Message.h"
 #include "../messaging/MessageType.h"
-#include "spdlog/spdlog.h"
 
 namespace pddm {
 
