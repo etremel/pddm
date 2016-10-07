@@ -53,7 +53,6 @@ bool SimNetworkClient::send(std::shared_ptr<std::list<TypeMessagePair>> untyped_
             network->send(*untyped_messages, meter_client.meter_id, recipient_id);
         }, busy_until_time, "Send messages after client delay");
     }
-    num_messages_sent += untyped_messages->size();
     //In BFT mode, failed meters may not advertise the fact that they are failed, so we can't detect failures.
     if(std::is_same<ProtocolState_t, BftProtocolState>::value) {
         return true;
@@ -101,7 +100,8 @@ void SimNetworkClient::receive_message(const messaging::MessageType& message_typ
     }
 }
 
-bool SimNetworkClient::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage> >& messages, const int recipient_id) {
+bool SimNetworkClient::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id) {
+    num_messages_sent += messages.size();
     //This isn't really "shared," we give up the reference to it and the send event will have the only copy.
     shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     for(auto& message : messages) {
@@ -111,18 +111,21 @@ bool SimNetworkClient::send(const std::list<std::shared_ptr<messaging::OverlayTr
 }
 
 bool SimNetworkClient::send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id) {
+    num_messages_sent++;
     shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     raw_message_list->emplace_back(messaging::MessageType::AGGREGATION, static_pointer_cast<void>(message));
     return send(std::move(raw_message_list), recipient_id);
 }
 
 bool SimNetworkClient::send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) {
+    //Ping messages don't count towards message count, since they're tiny compared to the other messages
     shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     raw_message_list->emplace_back(messaging::MessageType::PING, static_pointer_cast<void>(message));
     return send(std::move(raw_message_list), recipient_id);
 }
 
 bool SimNetworkClient::send(const std::shared_ptr<messaging::SignatureRequest>& message) {
+    num_messages_sent++;
     shared_ptr<list<TypeMessagePair>> raw_message_list = make_shared<list<TypeMessagePair>>();
     raw_message_list->emplace_back(messaging::MessageType::SIGNATURE_REQUEST, static_pointer_cast<void>(message));
     return send(std::move(raw_message_list), -1);

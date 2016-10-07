@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <iomanip>
 #include <functional>
 #include <vector>
 #include <cstddef>
@@ -17,19 +18,18 @@ namespace util {
 template<typename Base, int PrecisionBits>
 class FixedPoint {
     public:
-        static const Base factor = 1 << (PrecisionBits - 1);
+        static const constexpr Base factor = 1 << (PrecisionBits - 1);
         using base_type = Base;
 
         FixedPoint() : m(0) { }
         FixedPoint(const double d) : m(static_cast<Base>(d * factor)) { }
-        FixedPoint(const Base b) : m(b * factor) {}
         FixedPoint(const FixedPoint&) = default;
         FixedPoint(FixedPoint&&) = default;
 
         // friend functions
         friend constexpr FixedPoint operator+(const FixedPoint& x, const FixedPoint& y) { return FixedPoint{x.m + y.m}; }
         friend constexpr FixedPoint operator-(const FixedPoint& x, const FixedPoint& y) { return FixedPoint{x.m - y.m}; }
-        friend constexpr FixedPoint operator*(const FixedPoint& x, const FixedPoint& y) { return FixedPoint{(x.m * y.m) >> PrecisionBits}; }
+        friend constexpr FixedPoint operator*(const FixedPoint& x, const FixedPoint& y) { return FixedPoint{(x.m * y.m) / factor}; }
         friend constexpr FixedPoint operator/(const FixedPoint& x, const FixedPoint& y) { return FixedPoint{(x.m / y.m) * factor}; }
 
 
@@ -43,7 +43,6 @@ class FixedPoint {
         FixedPoint operator-() const { return FixedPoint(-m); }
         double toDouble() const { return double(m) / factor; }
         operator double() const { return toDouble(); }
-        operator Base() const { return m; }
 
         // comparison operators
         friend constexpr bool operator==(const FixedPoint& x, const FixedPoint& y) { return x.m == y.m; }
@@ -54,11 +53,16 @@ class FixedPoint {
         friend constexpr bool operator<=(const FixedPoint& x, const FixedPoint& y) { return x.m <= y.m; }
     private:
         Base m;
+        explicit FixedPoint(const Base m) : m(m) {}
 };
 
 template<typename Base, int PrecisionBits>
 std::ostream& operator<<(std::ostream& out, const FixedPoint<Base, PrecisionBits>& value) {
-    return out << value.toDouble();
+    //There's no good function for determining "number of decimal places you can express with x bits"
+    //so this array just statically maps precision bits to decimal digits past the point
+    static int sig_figs[] = {0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6};
+    return out << std::fixed << std::setprecision(sig_figs[PrecisionBits]) << value.toDouble()
+            << std::defaultfloat << std::setprecision(6); //reset stream to defaults before returning
 }
 
 } /* namespace util */

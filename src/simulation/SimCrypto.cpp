@@ -30,9 +30,9 @@ void SimCrypto::add_meter(const int meter_id, SimNetworkClient& meter_network_cl
 void SimCrypto::finish_setup() {
     if(!meter_network_clients.empty())
         throw std::runtime_error("finish_setup called more than once!");
-	if (meter_network_clients_setup.empty())
-		throw std::runtime_error("No clients were added to SimCrypto!");
-	const int last_id = meter_network_clients_setup.rbegin()->first;
+    if(meter_network_clients_setup.empty())
+        throw std::runtime_error("No clients were added to SimCrypto!");
+    const int last_id = meter_network_clients_setup.rbegin()->first;
     for(int id = 0; id <= last_id; ++id) {
         meter_network_clients.emplace_back(meter_network_clients_setup.at(id));
     }

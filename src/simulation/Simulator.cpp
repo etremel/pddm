@@ -73,13 +73,13 @@ void Simulator::read_devices_from_files(const string& device_power_data_file, co
         //Unfortunately, the only way to use istream_iterator is to read the whole line, including the standby load, into one vector
         std::vector<int> mixed_cycle_data{std::istream_iterator<int>{power_data}, std::istream_iterator<int>{}};
         //Take the standby load value off the end of the vector, leaving just the cycle data
-        cur_device.standby_load = FixedPoint_t{static_cast<int64_t>(mixed_cycle_data.back())};
+        cur_device.standby_load = FixedPoint_t{static_cast<double>(mixed_cycle_data.back())};
         mixed_cycle_data.pop_back();
         //Cycle data alternates between load per cycle and minutes per cycle
         cur_device.load_per_cycle.resize(mixed_cycle_data.size()/2);
         cur_device.time_per_cycle.resize(cur_device.load_per_cycle.size());
         for(size_t i = 0; i < mixed_cycle_data.size(); i += 2) {
-            cur_device.load_per_cycle[i/2] = FixedPoint_t(static_cast<int64_t>(mixed_cycle_data[i]));
+            cur_device.load_per_cycle[i/2] = FixedPoint_t(static_cast<double>(mixed_cycle_data[i]));
             cur_device.time_per_cycle[i/2] = mixed_cycle_data[i+1];
         }
     }
@@ -155,7 +155,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
             return Money(0.0612);
         }
     };
-    while((int) meter_clients.size() < num_homes) {
+    while(meter_clients.size() < (std::size_t) num_homes) {
         std::discrete_distribution<> income_distribution({25, 50, 25});
         int income_choice = income_distribution(random_engine);
         IncomeLevel income_level = income_choice == 0 ? IncomeLevel::POOR :
@@ -193,7 +193,7 @@ void Simulator::setup_simulation(int num_homes, const string& device_power_data_
     }
     //Assign secondary IDs to some meters
     int current_id = meter_clients.size();
-    for(size_t double_id_pointer = 0; double_id_pointer < modulus - meter_clients.size(); ++double_id_pointer) {
+    for(std::size_t double_id_pointer = 0; double_id_pointer < modulus - meter_clients.size(); ++double_id_pointer) {
         meter_clients[double_id_pointer]->set_second_id(current_id);
         virtual_meter_clients.emplace(current_id, std::ref(*meter_clients[double_id_pointer]));
         sim_network->connect_meter(meter_clients[double_id_pointer]->network_client, current_id);

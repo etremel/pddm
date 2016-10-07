@@ -154,7 +154,7 @@ FixedPoint_t Meter::run_device(Device& device, DeviceState& device_state) {
     int time_remaining_in_timestep = USAGE_TIMESTEP_MIN;
     //Simulate as many device cycles as will fit in one timestep
     while(time_remaining_in_timestep > 0
-            && device_state.current_cycle_num < device.load_per_cycle.size()) {
+            && device_state.current_cycle_num < (int) device.load_per_cycle.size()) {
         //The device may already be partway through the current cycle
         int current_cycle_time = device.time_per_cycle[device_state.current_cycle_num] - device_state.time_in_current_cycle;
         //Simulate a partial cycle if the current cycle has more time remaining than the timestep
@@ -169,7 +169,7 @@ FixedPoint_t Meter::run_device(Device& device, DeviceState& device_state) {
         }
     }
     //If the loop stopped because the device finished its last cycle, turn it off
-    if(device_state.current_cycle_num == device.load_per_cycle.size()) {
+    if(device_state.current_cycle_num == (int) device.load_per_cycle.size()) {
         device_state.is_on = false;
         device_state.current_cycle_num= 0;
     }

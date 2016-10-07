@@ -16,7 +16,7 @@
 using namespace pddm;
 
 void measure_query_run_times(char** argv, bool failures) {
-    std::vector<int> grid_sizes = {101, 197, 419, 613,  797, 1019, 1997, 3011, 5003};
+    std::vector<int> grid_sizes = {101, 197, 419, 613, /* 797, 1019, 1997, 3011, 5003*/};
 
     for(size_t i = 0; i < grid_sizes.size(); ++i) {
         simulation::Simulator sim;
@@ -41,13 +41,13 @@ int main(int argc, char** argv) {
     logger->set_pattern("[%H:%M:%S.%e] [%l] %v");
     logger->set_level(spdlog::level::debug);
 
-    measure_query_run_times(argv, true);
-//    const int num_homes = 101;
-//    simulation::Simulator sim;
-//    sim.setup_simulation(num_homes, std::string(argv[1]),
-//            std::string(argv[2]), std::string(argv[3]), std::string(argv[4]));
-//    simulation::METER_FAILURES_PER_QUERY = ProtocolState_t::FAILURES_TOLERATED;
-//    sim.run(std::set<simulation::QueryMode>{simulation::QueryMode::ONLY_ONE_QUERY});
+//    measure_query_run_times(argv, false);
+    const int num_homes = 101;
+    simulation::Simulator sim;
+    sim.setup_simulation(num_homes, std::string(argv[1]),
+            std::string(argv[2]), std::string(argv[3]), std::string(argv[4]));
+    simulation::METER_FAILURES_PER_QUERY = ProtocolState_t::FAILURES_TOLERATED;
+    sim.run(std::set<simulation::QueryMode>{simulation::QueryMode::ONLY_ONE_QUERY});
 
 	return 0;
 }

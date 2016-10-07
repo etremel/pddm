@@ -45,7 +45,7 @@ void HftProtocolState::start_query_impl(const std::shared_ptr<messaging::QueryRe
     std::vector<int> non_proxies = util::sample_range_excluding(0, num_meters,
             my_contribution->proxies, my_contribution->proxies.size(), random_engine);
     std::map<int, int> relays;
-    for(int i = 0; i < my_contribution->proxies.size(); ++i) {
+    for(std::size_t i = 0; i < my_contribution->proxies.size(); ++i) {
         relays[my_contribution->proxies[i]] = non_proxies[i];
     }
     //Create a two-layer onion for each tuple, and start flooding it towards the relay

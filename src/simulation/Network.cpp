@@ -25,7 +25,7 @@ const int MIN_LATENCY = 2;
 
 void Network::connect_meter(SimNetworkClient& meter_client, const int id) {
     meter_clients_setup.emplace(id, std::ref(meter_client));
-    if(failed.size() < id + 1)
+    if((int)failed.size() < id + 1)
         failed.resize(id + 1);
     failed[id] = false;
 }
@@ -42,9 +42,9 @@ void Network::connect_utility(SimUtilityNetworkClient& utility) {
 void Network::finish_setup() {
     if(!meter_clients.empty())
         throw std::runtime_error("finish_setup called more than once!");
-	if (meter_clients_setup.empty())
-		throw std::runtime_error("No meter clients were added to the network!");
-	const int last_id = meter_clients_setup.rbegin()->first;
+    if (meter_clients_setup.empty())
+        throw std::runtime_error("No meter clients were added to the network!");
+    const int last_id = meter_clients_setup.rbegin()->first;
     for(int id = 0; id <= last_id; ++id) {
         meter_clients.emplace_back(meter_clients_setup.at(id));
     }
@@ -77,7 +77,7 @@ bool Network::send(const std::list<std::pair<messaging::MessageType, std::shared
         return true;
     }
 
-    if(recipient_id < meter_clients.size()) {
+    if(recipient_id < (int) meter_clients.size()) {
         if(failed[recipient_id]) {
             //Assume it takes about as long as a network round-trip for the network
             //layer to conclude that the target is unreachable; during this time, the client's
