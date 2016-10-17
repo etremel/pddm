@@ -1,0 +1,6 @@
+[submodule "libraries/mutils-serialization"]
+	path = libraries/mutils-serialization
+	url = git@github.com:mpmilano/mutils-serialization.git
+[submodule "libraries/mutils"]
+	path = libraries/mutils
+	url = git@github.com:mpmilano/mutils.git
