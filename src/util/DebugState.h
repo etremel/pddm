@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 #include <memory>
 
 #include "../simulation/SimParameters.h"

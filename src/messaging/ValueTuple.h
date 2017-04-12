@@ -10,7 +10,6 @@
 #include <ostream>
 #include <vector>
 
-#include "MessageBody.h"
 #include "../util/Hash.h"
 #include "../util/OStreams.h"
 #include "../FixedPoint_t.h"
@@ -19,7 +18,7 @@ namespace pddm {
 
 namespace messaging {
 
-struct ValueTuple : public MessageBody {
+struct ValueTuple {
         int query_num;
         std::vector<FixedPoint_t> value;
         std::vector<int> proxies;
@@ -28,18 +27,19 @@ struct ValueTuple : public MessageBody {
             query_num(query_num), value(value), proxies(proxies) {}
 //        ValueTuple(const ValueTuple&) = default;
 //        ValueTuple(ValueTuple&&) = default;
-        //Equality operator should do the obvious thing.
-        inline bool operator==(const MessageBody& _rhs) const {
-            if (auto* rhs = dynamic_cast<const ValueTuple*>(&_rhs))
-                return this->query_num == rhs->query_num
-                        && this->value == rhs->value
-                        && this->proxies == rhs->proxies;
-            else return false;
-        }
+
+
 };
 
 inline std::ostream& operator<<(std::ostream& stream, const ValueTuple& tuple) {
     return stream << "(" << tuple.query_num << ", " << tuple.value << ", " << tuple.proxies << ")";
+}
+
+//Equality operator should do the obvious thing.
+inline bool operator==(const ValueTuple& lhs, const ValueTuple& rhs) {
+    return lhs.query_num == rhs.query_num
+            && lhs.value == rhs.value
+            && lhs.proxies == rhs.proxies;
 }
 
 }  // namespace messaging

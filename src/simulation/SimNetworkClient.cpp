@@ -9,10 +9,10 @@
 #include <memory>
 #include <list>
 #include <cassert>
-#include <spdlog/spdlog.h>
-#include <spdlog/fmt/ostr.h>
-
 #include "SimNetworkClient.h"
+
+#include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
 #include "../MeterClient.h"
 #include "Network.h"
 #include "../messaging/QueryRequest.h"
@@ -73,23 +73,25 @@ void SimNetworkClient::receive_message(const messaging::MessageType& message_typ
         //We finished a whole number of milliseconds of delay and received the next message,
         //so discard any extra microseconds - they shouldn't affect the next send
         accumulated_delay_micros = 0;
-        using namespace messaging;
         switch(message_type) {
-        case MessageType::OVERLAY:
-            logger->trace("At time {}, meter {} received an overlay message: {}", event_manager.get_current_time(), meter_client.meter_id, *static_pointer_cast<OverlayTransportMessage>(message));
-            meter_client.handle_message(static_pointer_cast<OverlayTransportMessage>(message));
+        case messaging::OverlayTransportMessage::type:
+            logger->trace("At time {}, meter {} received an overlay message: {}",
+                    event_manager.get_current_time(),
+                    meter_client.meter_id,
+                    *static_pointer_cast<messaging::OverlayTransportMessage>(message));
+            meter_client.handle_message(static_pointer_cast<messaging::OverlayTransportMessage>(message));
             break;
-        case MessageType::AGGREGATION:
-            meter_client.handle_message(static_pointer_cast<AggregationMessage>(message));
+        case messaging::AggregationMessage::type:
+            meter_client.handle_message(static_pointer_cast<messaging::AggregationMessage>(message));
             break;
-        case MessageType::PING:
-            meter_client.handle_message(static_pointer_cast<PingMessage>(message));
+        case messaging::PingMessage::type:
+            meter_client.handle_message(static_pointer_cast<messaging::PingMessage>(message));
             break;
-        case MessageType::QUERY_REQUEST:
-            meter_client.handle_message(static_pointer_cast<QueryRequest>(message));
+        case messaging::QueryRequest::type:
+            meter_client.handle_message(static_pointer_cast<messaging::QueryRequest>(message));
             break;
-        case MessageType::SIGNATURE_RESPONSE:
-            meter_client.handle_message(static_pointer_cast<SignatureResponse>(message));
+        case messaging::SignatureResponse::type:
+            meter_client.handle_message(static_pointer_cast<messaging::SignatureResponse>(message));
             break;
         default:
             logger->warn("Meter {} dropped a message it didn't know how to handle.", meter_client.meter_id);

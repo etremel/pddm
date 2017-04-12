@@ -13,11 +13,14 @@
 #include <ostream>
 #include <unordered_map>
 #include <vector>
+#include <mutils-serialization/SerializationSupport.hpp>
 
 #include "../FixedPoint_t.h"
 #include "../util/Hash.h"
 #include "Message.h"
+#include "MessageType.h"
 #include "MessageBody.h"
+#include "MessageBodyType.h"
 
 namespace pddm {
 namespace messaging {
@@ -27,6 +30,7 @@ class AggregationMessageValue : public MessageBody {
     private:
         std::vector<FixedPoint_t> data;
     public:
+        static const constexpr MessageBodyType type = MessageBodyType::AGGREGATION_VALUE;
         template<typename... A>
         AggregationMessageValue(A&&... args) : data(std::forward<A>(args)...) {}
         AggregationMessageValue(const AggregationMessageValue&) = default;
@@ -68,6 +72,25 @@ class AggregationMessageValue : public MessageBody {
                 return this->data == rhs->data;
             else return false;
         }
+        //Forward the serialization methods to the already-implemented ones for std::vector
+        std::size_t bytes_size() const {
+            return mutils::bytes_size(type) + mutils::bytes_size(data);
+        }
+        std::size_t to_bytes(char* buffer) const {
+            std::size_t bytes_written = mutils::to_bytes(type, buffer);
+            return bytes_written + mutils::to_bytes(data, buffer + bytes_written);
+        }
+        void post_object(const std::function<void (char const * const,std::size_t)>& f) const {
+            mutils::post_object(f, type);
+            mutils::post_object(f, data);
+        }
+        void ensure_registered(mutils::DeserializationManager&){}
+        static std::unique_ptr<AggregationMessageValue> from_bytes(mutils::DeserializationManager* m, char const* buffer) {
+            /*"Skip past the MessageBodyType, then take the deserialized vector
+             * and wrap it in a new AggregationMessageValue"*/
+            return std::make_unique<AggregationMessageValue>(
+                    *mutils::from_bytes<std::vector<FixedPoint_t>>(m, buffer + sizeof(type)));
+        }
 };
 
 std::ostream& operator<<(std::ostream& out, const AggregationMessageValue& v);
@@ -82,33 +105,38 @@ class AggregationMessage: public Message {
     private:
         int num_contributors;
     public:
+        static const constexpr MessageType type = MessageType::AGGREGATION;
         using body_type = AggregationMessageValue;
         int query_num;
         AggregationMessage() : Message(0, nullptr), num_contributors(0), query_num(0) {}
         AggregationMessage(const int sender_id, const int query_num, std::shared_ptr<AggregationMessageValue> value) :
             Message(sender_id, value), num_contributors(1), query_num(query_num) {}
         virtual ~AggregationMessage() = default;
-        std::shared_ptr<AggregationMessageValue> get_body() { return std::static_pointer_cast<AggregationMessageValue>(body); };
-        const std::shared_ptr<AggregationMessageValue> get_body() const { return std::static_pointer_cast<AggregationMessageValue>(body); };
+        std::shared_ptr<body_type> get_body() { return std::static_pointer_cast<body_type>(body); };
+        const std::shared_ptr<body_type> get_body() const { return std::static_pointer_cast<body_type>(body); };
         void add_value(const FixedPoint_t& value, int num_contributors);
         void add_values(const std::vector<FixedPoint_t>& values, const int num_contributors);
         int get_num_contributors() const { return num_contributors; }
 
+        std::size_t bytes_size() const;
+        std::size_t to_bytes(char* buffer) const;
+        void post_object(const std::function<void (char const * const,std::size_t)>&) const;
+        static std::unique_ptr<AggregationMessage> from_bytes(mutils::DeserializationManager *p, const char* buffer);
+
         friend bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs);
         friend struct std::hash<AggregationMessage>;
+    private:
+        //All-member constructor used only be deserialization
+        AggregationMessage(const int sender_id, const int query_num,
+                std::shared_ptr<AggregationMessageValue> value, const int num_contributors) :
+                    Message(sender_id, value), num_contributors(num_contributors), query_num(query_num) {}
 };
 
-inline bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs) {
-    return lhs.num_contributors == rhs.num_contributors && lhs.query_num == rhs.query_num && (*lhs.body) == (*rhs.body);
-}
+bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs);
 
-inline bool operator!=(const AggregationMessage& lhs, const AggregationMessage& rhs) {
-    return !(lhs == rhs);
-}
+bool operator!=(const AggregationMessage& lhs, const AggregationMessage& rhs);
 
-inline std::ostream& operator<<(std::ostream& out, const AggregationMessage& m) {
-    return out << *m.get_body() << " | Contributors: " << m.get_num_contributors();
-}
+std::ostream& operator<<(std::ostream& out, const AggregationMessage& m);
 
 } /* namespace messaging */
 } /* namespace pddm */

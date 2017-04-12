@@ -17,7 +17,8 @@
 namespace pddm {
 namespace messaging {
 
-std::shared_ptr<OverlayMessage> build_encrypted_onion(const std::list<int>& path, const std::shared_ptr<MessageBody>& payload,
+std::shared_ptr<OverlayMessage> build_encrypted_onion(const std::list<int>& path,
+        const std::shared_ptr<MessageBody>& payload,
         const int query_num, CryptoLibrary_t& crypto_library) {
     //Start with the last layer of the onion, which actually contains the payload
     auto current_layer = crypto_library.rsa_encrypt(std::make_shared<OverlayMessage>(

@@ -21,6 +21,8 @@
 #include "Network.h"
 #include "SimCrypto.h"
 #include "Device.h"
+#include "EventManager.h"
+#include "SimTimerManager.h"
 
 namespace pddm {
 namespace messaging {

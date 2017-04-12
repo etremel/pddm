@@ -152,7 +152,8 @@ void ProtocolState<Impl>::super_end_overlay_round() {
     for(auto message_iter = future_overlay_messages.begin();
             message_iter != future_overlay_messages.end(); ) {
         if((*message_iter)->sender_round == overlay_round
-                && std::static_pointer_cast<messaging::OverlayMessage>((*message_iter)->body)->query_num ==
+                && std::static_pointer_cast<messaging::OverlayTransportMessage::body_type>(
+                        (*message_iter)->body)->query_num ==
                         get_current_query_num()) {
             received_messages.emplace_back(*message_iter);
             message_iter = future_overlay_messages.erase(message_iter);

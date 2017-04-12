@@ -7,13 +7,14 @@
 
 #pragma once
 
+#include <cstddef>
+#include <functional>
 #include <list>
+#include <memory>
+#include <mutils-serialization/SerializationSupport.hpp>
 #include <ostream>
-#include <sstream>
-#include <string>
 
 #include "OverlayMessage.h"
-#include "../util/OStreams.h"
 
 namespace pddm {
 namespace messaging {
@@ -26,21 +27,25 @@ namespace messaging {
  */
 class PathOverlayMessage : public OverlayMessage {
     public:
+        static const constexpr MessageBodyType type = MessageBodyType::PATH_OVERLAY;
         std::list<int> remaining_path;
         PathOverlayMessage(const int query_num, const std::list<int>& path, const std::shared_ptr<MessageBody>& body) :
             OverlayMessage(query_num, path.front(), body), remaining_path(++path.begin(), path.end()) { }
         virtual ~PathOverlayMessage() = default;
+
+        //Serialization support
+        std::size_t to_bytes(char* buffer) const;
+        void post_object(const std::function<void (char const * const,std::size_t)>& consumer_function) const;
+        std::size_t bytes_size() const;
+        static std::unique_ptr<PathOverlayMessage> from_bytes(mutils::DeserializationManager* m, char const * buffer);
+
+    protected:
+        /** Default constructor, used only by deserialization.*/
+        PathOverlayMessage() : OverlayMessage() {}
 };
 
-inline std::ostream& operator<< (std::ostream& out, const PathOverlayMessage& message) {
-    std::stringstream super_streamout;
-    super_streamout << static_cast<OverlayMessage>(message);
-    std::string output_string = super_streamout.str();
-    std::stringstream path_string_builder;
-    path_string_builder << "|RemainingPath=" << message.remaining_path;
-    output_string.insert(output_string.find("|Body="), path_string_builder.str());
-    return out << output_string;
-}
+
+std::ostream& operator<< (std::ostream& out, const PathOverlayMessage& message);
 
 }
 }

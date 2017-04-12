@@ -5,6 +5,7 @@
 #include <functional>
 #include <vector>
 #include <cstddef>
+#include <mutils-serialization/SerializationSupport.hpp>
 
 namespace pddm {
 namespace util {
@@ -16,7 +17,7 @@ namespace util {
  * that should be interpreted as places past the decimal point.
  */
 template<typename Base, int PrecisionBits>
-class FixedPoint {
+class FixedPoint : public mutils::ByteRepresentable {
     public:
         static const constexpr Base factor = 1 << (PrecisionBits - 1);
         using base_type = Base;
@@ -51,6 +52,22 @@ class FixedPoint {
         friend constexpr bool operator<(const FixedPoint& x, const FixedPoint& y) { return x.m < y.m; }
         friend constexpr bool operator>=(const FixedPoint& x, const FixedPoint& y) { return x.m >= y.m; }
         friend constexpr bool operator<=(const FixedPoint& x, const FixedPoint& y) { return x.m <= y.m; }
+
+        //Serialization support
+        std::size_t bytes_size() const { return mutils::bytes_size(m); }
+        std::size_t to_bytes(char* buf) const { return mutils::to_bytes(m, buf); }
+        void ensure_registered(mutils::DeserializationManager&){}
+        void post_object(const std::function<void (char const * const,std::size_t)>& f) const {
+            mutils::post_object(f, m);
+        }
+        static std::unique_ptr<FixedPoint> from_bytes(mutils::DeserializationManager* p, const char* buf) {
+            Base internal_int;
+            std::memcpy(&internal_int, buf, sizeof(Base));
+            //std::make_unique bizarrely fails if used with a private constructor,
+            //even though this context can access the private constructor
+            return std::unique_ptr<FixedPoint>(new FixedPoint(internal_int));
+        }
+
     private:
         Base m;
         explicit FixedPoint(const Base m) : m(m) {}
