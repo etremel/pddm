@@ -246,7 +246,12 @@ inline void spdlog::logger::_sink_it(details::log_msg& msg)
 {
     _formatter->format(msg);
     for (auto &sink : _sinks)
-        sink->log(msg);
+    {
+        if( sink->should_log( msg.level))
+        {
+            sink->log(msg);
+        }
+    }
 
     if(_should_flush_on(msg))
         flush();
@@ -285,4 +290,9 @@ inline bool spdlog::logger::_should_flush_on(const details::log_msg &msg)
 {
     const auto flush_level = _flush_level.load(std::memory_order_relaxed);
     return (msg.level >= flush_level) && (msg.level != level::off);
+}
+
+inline const std::vector<spdlog::sink_ptr>& spdlog::logger::sinks() const
+{
+    return _sinks;
 }

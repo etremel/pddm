@@ -20,14 +20,12 @@
 namespace spdlog
 {
 
-// Return an existing logger or nullptr if a logger with such name doesn't exist.
-// Examples:
 //
-// spdlog::get("mylog")->info("Hello");
-// auto logger = spdlog::get("mylog");
-// logger.info("This is another message" , x, y, z);
-// logger.info() << "This is another message" << x << y << z;
+// Return an existing logger or nullptr if a logger with such name doesn't exist.
+// example: spdlog::get("my_logger")->info("hello {}", "world");
+//
 std::shared_ptr<logger> get(const std::string& name);
+
 
 //
 // Set global formatting
@@ -69,7 +67,8 @@ void set_sync_mode();
 
 
 //
-// Create and register multi/single basic file logger
+// Create and register multi/single threaded basic file logger.
+// Basic logger simply writes to given file without any limitatons or rotations.
 //
 std::shared_ptr<logger> basic_logger_mt(const std::string& logger_name, const filename_t& filename, bool truncate = false);
 std::shared_ptr<logger> basic_logger_st(const std::string& logger_name, const filename_t& filename, bool truncate = false);
@@ -89,10 +88,17 @@ std::shared_ptr<logger> daily_logger_st(const std::string& logger_name, const fi
 //
 // Create and register stdout/stderr loggers
 //
-std::shared_ptr<logger> stdout_logger_mt(const std::string& logger_name, bool color = false);
-std::shared_ptr<logger> stdout_logger_st(const std::string& logger_name, bool color = false);
-std::shared_ptr<logger> stderr_logger_mt(const std::string& logger_name, bool color = false);
-std::shared_ptr<logger> stderr_logger_st(const std::string& logger_name, bool color = false);
+std::shared_ptr<logger> stdout_logger_mt(const std::string& logger_name);
+std::shared_ptr<logger> stdout_logger_st(const std::string& logger_name);
+std::shared_ptr<logger> stderr_logger_mt(const std::string& logger_name);
+std::shared_ptr<logger> stderr_logger_st(const std::string& logger_name);
+//
+// Create and register colored stdout/stderr loggers
+//
+std::shared_ptr<logger> stdout_color_mt(const std::string& logger_name);
+std::shared_ptr<logger> stdout_color_st(const std::string& logger_name);
+std::shared_ptr<logger> stderr_color_mt(const std::string& logger_name);
+std::shared_ptr<logger> stderr_color_st(const std::string& logger_name);
 
 
 //
@@ -102,6 +108,9 @@ std::shared_ptr<logger> stderr_logger_st(const std::string& logger_name, bool co
 std::shared_ptr<logger> syslog_logger(const std::string& logger_name, const std::string& ident = "", int syslog_option = 0);
 #endif
 
+#if defined(__ANDROID__)
+std::shared_ptr<logger> android_logger(const std::string& logger_name, const std::string& tag = "spdlog");
+#endif
 
 // Create and register a logger a single sink
 std::shared_ptr<logger> create(const std::string& logger_name, const sink_ptr& sink);
