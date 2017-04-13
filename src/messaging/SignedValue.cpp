@@ -49,6 +49,7 @@ std::unique_ptr<std::map<int, util::SignatureArray>> SignedValue::from_bytes_map
         bytes_read += value.size() * sizeof(util::SignatureArray::value_type);
         new_map->emplace(key, value);
     }
+    return new_map;
 }
 
 std::size_t SignedValue::bytes_size() const {
@@ -57,7 +58,7 @@ std::size_t SignedValue::bytes_size() const {
 }
 
 std::size_t SignedValue::to_bytes(char* buffer) const {
-    //Since *value is itself a MessageBody, this will put a MessageBodyType in the buffer
+    //Since *value is itself a MessageBody, this will also put a MessageBodyType in the buffer
     std::size_t bytes_written = mutils::to_bytes(*value, buffer);
     //Rewrite the first two bytes of the buffer to change the MessageBodyType
     mutils::to_bytes(type, buffer);

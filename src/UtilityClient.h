@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_set>
 #include <list>
+#include <queue>
 #include <spdlog/spdlog.h>
 
 #include "Configuration.h"

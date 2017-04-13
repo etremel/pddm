@@ -32,7 +32,7 @@ namespace pddm {
 std::vector<std::shared_ptr<messaging::OverlayMessage> > CrusaderAgreementState::finish_phase_1(int current_round) {
     std::vector<std::shared_ptr<messaging::OverlayMessage>> accept_messages;
     for(const auto& signed_value_entry : signed_proxy_values) {
-        if(signed_value_entry.second.signatures.size() < log2n + 1) {
+        if(signed_value_entry.second.signatures.size() < (unsigned) log2n + 1) {
             //Reject values without enough signatures
             continue;
         }
@@ -61,7 +61,7 @@ util::unordered_ptr_set<messaging::ValueContribution> CrusaderAgreementState::fi
     util::unordered_ptr_set<messaging::ValueContribution> accepted_proxy_values;
     for(const auto& signed_value_entry : signed_proxy_values) {
         //Accept the value if it has enough distinct signatures
-        if(signed_value_entry.second.signatures.size() >= log2n + 1) {
+        if(signed_value_entry.second.signatures.size() >= (unsigned) log2n + 1) {
             accepted_proxy_values.emplace(signed_value_entry.second.value);
         } else {
             //Log warning

@@ -102,6 +102,10 @@ class MeterClient {
         /** @copydoc handle_message(const std::shared_ptr<messaging::OverlayTransportMessage>&) */
         void handle_message(const std::shared_ptr<messaging::SignatureResponse>& message);
 
+        /** Starts the client, which will continuously wait for messages and
+         * respond to them as they arrive. This function call never returns. */
+        void main_loop();
+
         int get_num_meters() const { return num_meters; }
         //Obscene hack to allow Simulator to connect meters to the simulated Network. There's got to be a better way.
         NetworkClient_t& get_network_client() { return network_client; }

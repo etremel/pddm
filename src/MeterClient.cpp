@@ -142,4 +142,8 @@ void MeterClient::handle_signature_response(const std::shared_ptr<messaging::Sig
     /* Do nothing, non-BFT protocols will never get this message */
 }
 
+void MeterClient::main_loop() {
+    network_client.monitor_incoming_messages();
+}
+
 } /* namespace pddm */

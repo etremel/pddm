@@ -51,6 +51,14 @@ class NetworkClient {
         virtual bool send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) = 0;
         /** Sends a signature request message to the utility. */
         virtual bool send(const std::shared_ptr<messaging::SignatureRequest>& message) = 0;
+
+        /**
+         * Continuously polls for incoming messages to this meter, calling the
+         * appropriate "handler" function in MeterClient each time a message is
+         * received. This function will never return, so each meter should call
+         * it once, in its own thread.
+         */
+        virtual void monitor_incoming_messages() = 0;
 };
 
 inline NetworkClient::~NetworkClient() { }

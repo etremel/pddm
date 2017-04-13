@@ -11,10 +11,15 @@
 
 #pragma once
 
-#include "simulation/SimNetworkClient.h"
-#include "simulation/SimUtilityNetworkClient.h"
+//#include "simulation/SimNetworkClient.h"
+#include "networking/TcpNetworkClient.h"
+//#include "simulation/SimUtilityNetworkClient.h"
+#include "networking/TcpUtilityClient.h"
 #include "simulation/Meter.h"
-#include "simulation/SimCryptoWrapper.h"
-#include "simulation/SimTimerManager.h"
-//#include "HftProtocolState.h"
-#include "CtProtocolState.h"
+//#include "simulation/SimCryptoWrapper.h"
+#include "util/DummyCrypto.h"
+//#include "simulation/SimTimerManager.h"
+#include "util/LinuxTimerManager.h"
+#include "HftProtocolState.h"
+//#include "CtProtocolState.h"
+//#include "BftProtocolState.h"

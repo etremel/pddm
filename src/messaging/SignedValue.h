@@ -38,9 +38,9 @@ class SignedValue : public MessageBody {
                         && this->signatures == rhs->signatures;
             else return false;
         }
-        std::size_t bytes_size() const;
-        std::size_t to_bytes(char* buffer) const;
-        void post_object(const std::function<void (char const * const,std::size_t)>& function) const;
+        std::size_t bytes_size() const override;
+        std::size_t to_bytes(char* buffer) const override;
+        void post_object(const std::function<void (char const * const,std::size_t)>& function) const override;
         static std::unique_ptr<SignedValue> from_bytes(mutils::DeserializationManager *p, const char* buffer);
     private:
         //Helper functions for the signatures map

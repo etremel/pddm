@@ -23,11 +23,11 @@
 #include "messaging/QueryRequest.h"
 #include "messaging/ValueContribution.h"
 #include "messaging/ValueTuple.h"
+#include "simulation/DebugState.h"
 #include "TreeAggregationState.h"
 #include "util/Overlay.h"
 #include "util/OStreams.h"
 #include "util/Random.h"
-#include "util/DebugState.h"
 
 namespace pddm {
 
@@ -120,15 +120,15 @@ void HftProtocolState::end_overlay_round_impl() {
 
         gather_start_round = overlay_round;
         protocol_phase = HftProtocolPhase::GATHER;
-        util::debug_state().num_finished_scatter++;
-        util::print_scatter_status(logger, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_scatter++;);
+        SIM_DEBUG(util::print_scatter_status(logger, num_meters););
     }
     //Determine if the Gather phase has ended
     else if(protocol_phase == HftProtocolPhase::GATHER
             && overlay_round >= gather_start_round + log2n + FAILURES_TOLERATED) {
         logger->debug("Meter {} is finished with Gather", meter_id);
-        util::debug_state().num_finished_gather++;
-        util::print_gather_status(logger, meter_id, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_gather++;);
+        SIM_DEBUG(util::print_gather_status(logger, meter_id, num_meters););
         current_flood_messages.clear();
 
         //Start the Aggregate phase
@@ -158,8 +158,8 @@ void HftProtocolState::send_aggregate_if_done() {
         protocol_phase = HftProtocolPhase::IDLE;
         current_flood_messages.clear();
         logger->debug("Meter {} is finished with Aggregate", meter_id);
-        util::debug_state().num_finished_aggregate++;
-        util::print_aggregate_status(logger, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_aggregate++;);
+        SIM_DEBUG(util::print_aggregate_status(logger, num_meters););
     }
 }
 

@@ -14,8 +14,8 @@
 #include "messaging/OverlayTransportMessage.h"
 #include "messaging/QueryRequest.h"
 #include "messaging/OnionBuilder.h"
+#include "simulation/DebugState.h"
 #include "util/PathFinder.h"
-#include "util/DebugState.h"
 
 namespace pddm {
 
@@ -90,8 +90,8 @@ void CtProtocolState::send_aggregate_if_done() {
         aggregation_phase_state->compute_and_send_aggregate(proxy_values);
         protocol_phase = CtProtocolPhase::IDLE;
         logger->debug("Meter {} is finished with Aggregate", meter_id);
-        util::debug_state().num_finished_aggregate++;
-        util::print_aggregate_status(logger, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_aggregate++;);
+        SIM_DEBUG(util::print_aggregate_status(logger, num_meters););
     }
 }
 
@@ -117,15 +117,15 @@ void CtProtocolState::end_overlay_round_impl() {
         }
         echo_start_round = overlay_round;
         protocol_phase = CtProtocolPhase::ECHO;
-        util::debug_state().num_finished_shuffle++;
-        util::print_shuffle_status(logger, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_shuffle++;);
+        SIM_DEBUG(util::print_shuffle_status(logger, num_meters););
     }
     //Determine if the Echo phase has ended
     else if (protocol_phase == CtProtocolPhase::ECHO
             && overlay_round >= echo_start_round + FAILURES_TOLERATED + 2 * log2n + 1) {
         logger->debug("Meter {} is finished with Echo", meter_id);
-        util::debug_state().num_finished_echo++;
-        util::print_echo_status(logger, meter_id, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_echo++;);
+        SIM_DEBUG(util::print_echo_status(logger, meter_id, num_meters););
         //Start the Aggregate phase
         protocol_phase = CtProtocolPhase::AGGREGATE;
         start_aggregate_phase();

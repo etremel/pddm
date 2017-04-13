@@ -12,8 +12,8 @@
 #include <spdlog/spdlog.h>
 #include <memory>
 
-#include "../simulation/SimParameters.h"
-#include "../simulation/EventManager.h"
+#include "SimParameters.h"
+#include "EventManager.h"
 
 namespace pddm {
 

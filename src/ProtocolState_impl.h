@@ -22,10 +22,18 @@
 #include "util/Overlay.h"
 #include "TreeAggregationState.h"
 #include "util/OStreams.h"
-#include "util/DebugState.h"
+
+#ifdef SIM_NETWORK
+#include "simulation/DebugState.h"
+#endif
+
+#ifdef SIM_NETWORK
+#define SIM_DEBUG(expr) do { expr } while (0)
+#else
+#define SIM_DEBUG(expr) do { } while (0)
+#endif
 
 namespace pddm {
-
 
 template<typename Impl>
 ProtocolState<Impl>::ProtocolState(Impl* subclass_ptr, NetworkClient_t& network, CryptoLibrary_t& crypto,
@@ -44,7 +52,7 @@ void ProtocolState<Impl>::start_query(const std::shared_ptr<messaging::QueryRequ
     timers.cancel_timer(round_timeout_timer);
     proxy_values.clear();
     failed_meter_ids.clear();
-    util::init_debug_state();
+    SIM_DEBUG(util::init_debug_state(););
     aggregation_phase_state = std::make_unique<TreeAggregationState>(meter_id, num_aggregation_groups, num_meters,
             network, query_request);
     std::vector<int> proxies = util::pick_proxies(meter_id, num_aggregation_groups, num_meters);
@@ -122,7 +130,7 @@ void ProtocolState<Impl>::handle_round_timeout() {
 template<typename Impl>
 void ProtocolState<Impl>::super_end_overlay_round() {
     timers.cancel_timer(round_timeout_timer);
-    logger->trace("Meter {} ending round {} at time {}", meter_id, overlay_round, util::print_time());
+    SIM_DEBUG(logger->trace("Meter {} ending round {} at time {}", meter_id, overlay_round, util::print_time()););
     //If the last round is ending, the only thing we need to do is cancel the timeout
     if(is_last_round)
         return;

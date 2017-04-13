@@ -1,11 +1,13 @@
 /*
- * SimNetwork.h
+ * SimNetworkClient.h
  *
  *  Created on: May 16, 2016
  *      Author: edward
  */
 
 #pragma once
+//This is not an include guard, but it signals to other files that this header has been included
+#define SIM_NETWORK
 
 #include <memory>
 #include <vector>
@@ -73,6 +75,8 @@ class SimNetworkClient : public NetworkClient {
         bool send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id);
         bool send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id);
         bool send(const std::shared_ptr<messaging::SignatureRequest>& message);
+        //In the simulation there is no "polling" loop, so this function does nothing
+        void monitor_incoming_messages() {}
 
         /** Called by the simulated Network when the meter should receive a message. */
         void receive_message(const messaging::MessageType& message_type, const std::shared_ptr<void>& message);

@@ -98,8 +98,8 @@ void BftProtocolState::send_aggregate_if_done() {
         aggregation_phase_state->compute_and_send_aggregate(accepted_proxy_values);
         protocol_phase = BftProtocolPhase::IDLE;
         logger->debug("Meter {} is finished with Aggregate", meter_id);
-        util::debug_state().num_finished_aggregate++;
-        util::print_aggregate_status(logger, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_aggregate++;);
+        SIM_DEBUG(util::print_aggregate_status(logger, num_meters););
     }
 }
 
@@ -129,8 +129,8 @@ void BftProtocolState::end_overlay_round_impl() {
         }
         agreement_start_round = overlay_round;
         protocol_phase = BftProtocolPhase::AGREEMENT;
-        util::debug_state().num_finished_shuffle++;
-        util::print_shuffle_status(logger, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_shuffle++;);
+        SIM_DEBUG(util::print_shuffle_status(logger, num_meters););
     }
     //Detect finishing phase 2 of Agreement
     else if(protocol_phase == BftProtocolPhase::AGREEMENT
@@ -138,8 +138,8 @@ void BftProtocolState::end_overlay_round_impl() {
             && agreement_phase_state->is_phase1_finished()) {
         logger->debug("Meter {} finished phase 2 of Agreement", meter_id);
         accepted_proxy_values = agreement_phase_state->finish_phase_2();
-        util::debug_state().num_finished_agreement++;
-        util::print_agreement_status(logger, meter_id, num_meters);
+        SIM_DEBUG(util::debug_state().num_finished_agreement++;);
+        SIM_DEBUG(util::print_agreement_status(logger, meter_id, num_meters););
 
         //Start the Aggregate phase
         protocol_phase = BftProtocolPhase::AGGREGATE;

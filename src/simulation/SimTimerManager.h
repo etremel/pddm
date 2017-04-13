@@ -32,8 +32,8 @@ class SimTimerManager: public util::TimerManager {
     public:
         SimTimerManager(EventManager& event_manager) : next_id(0), timer_events(), event_manager(event_manager) {}
         virtual ~SimTimerManager() = default;
-        util::timer_id_t register_timer(const int delay_ms, std::function<void(void)> callback);
-        void cancel_timer(const util::timer_id_t timer_id);
+        util::timer_id_t register_timer(const int delay_ms, std::function<void(void)> callback) override;
+        void cancel_timer(const util::timer_id_t timer_id) override;
 };
 
 

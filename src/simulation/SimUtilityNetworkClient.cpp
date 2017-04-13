@@ -37,10 +37,10 @@ void SimUtilityNetworkClient::send(const std::shared_ptr<messaging::SignatureRes
 void SimUtilityNetworkClient::receive_message(const messaging::MessageType& message_type, const std::shared_ptr<void>& message) {
     using namespace messaging;
     switch(message_type) {
-    case MessageType::AGGREGATION:
+    case AggregationMessage::type:
         utility_client.handle_message(static_pointer_cast<AggregationMessage>(message));
         break;
-    case MessageType::SIGNATURE_REQUEST:
+    case SignatureRequest::type:
         utility_client.handle_message(static_pointer_cast<SignatureRequest>(message));
         break;
     default:
