@@ -8,4 +8,4 @@ To switch the code between "simulation" and "real life" mode, edit Configuration
 
 ## Building
 
-This system can be built automatically by Eclipse when imported as a standard C++14 project using the external "make" builder and the "GNU" toolchain. It requires a compiler with C++14 support, such as Clang++ 3.8 or GCC 5.
+This project requires a compiler with C++14 support, such as Clang++ 3.8 or GCC 5.4. The provided Makefile assumes a Linux system (with tools such as find) and depends on libpthread and librt being installed. There are several build targets that choose different sets of headers to include, depending on whether the executable being compiled expects the code to be configured in "simulation" mode or "real life" mode. (Thus, building "AllSimulated" will not attempt to build or include the TCP networking files). 
