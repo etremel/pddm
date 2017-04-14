@@ -64,6 +64,8 @@ class TcpNetworkClient : public BaseTcpClient<TcpNetworkClient>, public NetworkC
             BaseTcpClient::monitor_incoming_messages();
         }
 
+        int get_total_messages_sent() const { return num_messages_sent; }
+
 };
 
 std::function<TcpNetworkClient (MeterClient&)> network_client_builder(const TcpAddress& my_address,

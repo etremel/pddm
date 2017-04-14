@@ -27,14 +27,12 @@ COMMON_SRCS += $(shell find $(SRC_DIR)/util -name *.cpp)
 ALL_SIM_SRCS := $(shell find $(SRC_DIR)/simulation -name *.cpp)
 ALL_SIM_SRCS += $(SRC_DIR)/SimulationMain.cpp
 
-EMULATED_NETWORK_SRCS := EmulatedTestMain.cpp simulation/Meter.cpp simulation/SimCrypto.cpp simulation/SimCryptoWrapper.cpp simulation/SimParameters.cpp
+EMULATED_NETWORK_SRCS := EmulatedTestMain.cpp simulation/Meter.cpp simulation/SimParameters.cpp
 EMULATED_NETWORK_SRCS := $(addprefix $(SRC_DIR)/,$(EMULATED_NETWORK_SRCS))
 EMULATED_NETWORK_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
 
 SIMPLE_MESSAGING_TEST_SRCS := SimpleMessagingTest.cpp 
 SIMPLE_MESSAGING_TEST_SRCS := $(addprefix $(SRC_DIR)/,$(SIMPLE_MESSAGING_TEST_SRCS))
-#SIMPLE_MESSAGING_TEST_SRCS += $(shell find $(SRC_DIR)/messaging -name *.cpp)
-#SIMPLE_MESSAGING_TEST_SRCS += $(shell find $(SRC_DIR)/util -name *.cpp)
 SIMPLE_MESSAGING_TEST_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
 
 #Generic object-from-cpp rule

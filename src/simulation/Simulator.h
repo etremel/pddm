@@ -72,12 +72,6 @@ class Simulator {
 
         std::vector<int> query_round_trip_times;
 
-        /** Helper method for setup; parses a set of configuration files to get
-         * the set of possible devices for simulated meters. */
-        void read_devices_from_files(const std::string& device_power_data_file,
-                const std::string& device_frequency_data_file, const std::string& device_probability_data_file,
-                const std::string& device_saturation_data_file);
-
         /** Helper method for run(); generates events that cause the utility to run queries. */
         void setup_queries(const std::set<QueryMode>& query_options);
         /** This function is registered with the simulated utility to be called

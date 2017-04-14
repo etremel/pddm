@@ -5,17 +5,18 @@
  *      Author: edward
  */
 
-#include <algorithm>
-#include <vector>
-#include <string>
-#include <random>
-
 #include "Meter.h"
-#include "Device.h"
-#include "DeviceState.h"
+
+#include <algorithm>
+#include <list>
+#include <map>
+#include <regex>
+#include <string>
+#include <vector>
+
+#include "../FixedPoint_t.h"
 #include "SimParameters.h"
 #include "Timesteps.h"
-#include "../util/Money.h"
 
 namespace pddm {
 namespace simulation {
@@ -24,6 +25,48 @@ using std::string;
 using std::vector;
 using std::make_pair;
 using namespace timesteps;
+
+inline bool device_already_picked(const std::list<Device>& existing_devices, const std::regex& name_pattern) {
+    for(const auto& existing_device : existing_devices) {
+        if(std::regex_search(existing_device.name, name_pattern))
+            return true;
+    }
+    return false;
+}
+
+std::unique_ptr<Meter> generate_meter(std::discrete_distribution<>& income_distribution,
+        const std::map<std::string, Device>& possible_devices,
+        const std::map<std::string, double>& devices_saturation,
+        const PriceFunction& energy_price_function,
+        std::mt19937& random_engine) {
+    int income_choice = income_distribution(random_engine);
+    IncomeLevel income_level = income_choice == 0 ? IncomeLevel::POOR :
+            (income_choice == 1 ? IncomeLevel::AVERAGE : IncomeLevel::RICH);
+    //Pick what devices this home owns based on their saturation percentages
+    std::list<Device> home_devices;
+    for(const auto& device_saturation : devices_saturation) {
+        //Devices that end in digits have multiple "versions," and only one of them should be in home_devices
+        std::regex ends_in_digits(".*[0-9]$", std::regex::extended);
+        if(std::regex_match(device_saturation.first, ends_in_digits)) {
+            std::regex name_prefix(device_saturation.first.substr(0, device_saturation.first.length()-2) + string(".*"), std::regex::extended);
+            if(device_already_picked(home_devices, name_prefix)) {
+                continue;
+            }
+
+        }
+        //Homes have either a window or central AC but not both
+        std::regex conditioner("conditioner");
+        if(std::regex_search(device_saturation.first, conditioner) && device_already_picked(home_devices, conditioner)) {
+            continue;
+        }
+        //Otherwise, randomly decide whether to include this device, based on its saturation
+        double saturation_as_fraction = device_saturation.second / 100.0;
+        if(std::bernoulli_distribution(saturation_as_fraction)(random_engine)) {
+            home_devices.emplace_back(possible_devices.at(device_saturation.first));
+        }
+    }
+    return std::make_unique<Meter>(income_level, home_devices, energy_price_function);
+}
 
 Meter::Meter(const IncomeLevel& income_level, std::list<Device>& owned_devices, const PriceFunction& energy_price_function) :
         energy_price_function(energy_price_function), income_level(income_level), current_timestep(-1),

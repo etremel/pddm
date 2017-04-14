@@ -9,6 +9,8 @@
 
 #include <functional>
 #include <list>
+#include <map>
+#include <memory>
 #include <random>
 #include <utility>
 #include <vector>
@@ -58,6 +60,25 @@ class Meter : public MeterInterface {
         void simulate_usage_timestep();
 };
 
+/**
+ * Factory that creates a new simulated meter by picking a set of devices at
+ * random, based on their saturation percentages and an income distribution.
+ * @param income_distribution The percentages of low, middle, and high-income
+ * homes in the region being simulated
+ * @param possible_devices The set of possible devices, indexed by name
+ * @param devices_saturation Maps a device name to the saturation of that device,
+ * as a percentage.
+ * @param energy_price_function The price function to store in the created meter.
+ * @param random_engine A source of randomness. Specified to be std::mt19937
+ * because (bizarrely) there's no common supertype for randomness engines, and
+ * this is the one I happen to use in Simulator.
+ * @return A new Meter with a random set of devices
+ */
+std::unique_ptr<Meter> generate_meter(std::discrete_distribution<>& income_distribution,
+        const std::map<std::string, Device>& possible_devices,
+        const std::map<std::string, double>& devices_saturation,
+        const PriceFunction& energy_price_function,
+        std::mt19937& random_engine);
 
 } /* namespace simulation */
 } /* namespace psm */
