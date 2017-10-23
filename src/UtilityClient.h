@@ -21,7 +21,7 @@ namespace pddm {
  */
 class UtilityClient {
     public:
-        using QueryCallback = std::function<void (const int, const std::shared_ptr<messaging::AggregationMessageValue>&)>;
+        using QueryCallback = std::function<void (const int, std::shared_ptr<messaging::AggregationMessageValue>)>;
     private:
         enum class QueryProtocol { BFT, CT, HFT };
         /* Instead of making three subclasses of UtilityClient, we'll just switch behavior

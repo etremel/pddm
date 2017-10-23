@@ -59,6 +59,7 @@ class DummyCrypto : public CryptoLibrary {
             signature.fill(0);
         }
         void rsa_sign(const messaging::ValueContribution& value, util::SignatureArray& signature) override {
+            signature.fill(0);
         }
 
         bool rsa_verify(const messaging::ValueContribution& value, const util::SignatureArray& signature,

@@ -10,6 +10,7 @@
 #include <cassert>
 #include <csignal>
 #include <ctime>
+#include <iostream>
 
 namespace pddm {
 namespace util {
@@ -24,8 +25,8 @@ LinuxTimerManager::LinuxTimerManager() : next_id(0) {
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = timer_signal_handler;
     sigemptyset(&sa.sa_mask);
-    int success = sigaction(SIGRTMIN, &sa, NULL);
-    assert(success);
+    int success_flag = sigaction(SIGRTMIN, &sa, NULL);
+    assert(success_flag == 0);
 }
 
 void timer_signal_handler(int signum, siginfo_t* info, void* ucontext) {
@@ -45,8 +46,8 @@ timer_id_t LinuxTimerManager::register_timer(const int delay_ms, std::function<v
     timer_event.sigev_value.sival_int = next_id;
 
     timer_t timer_handle;
-    int success = timer_create(CLOCK_REALTIME, &timer_event, &timer_handle);
-    assert(success);
+    int success_flag = timer_create(CLOCK_REALTIME, &timer_event, &timer_handle);
+    assert(success_flag == 0);
     timer_handles[next_id] = timer_handle;
     timer_callbacks[next_id] = callback;
 

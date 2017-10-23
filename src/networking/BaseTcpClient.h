@@ -38,6 +38,12 @@ class BaseTcpClient {
         BaseTcpClient(Impl* subclass_this, const TcpAddress& my_address, const std::map<int, TcpAddress>& meter_ips_by_id);
         virtual ~BaseTcpClient();
     public:
+        /**
+         * Loops forever, waiting for incoming connections and calling the subclass's
+         * receive_message() when a connected client sends a complete message.
+         * Calls to this function will not return, so client applications must
+         * dedicate a thread to it.
+         */
         void monitor_incoming_messages();
 };
 

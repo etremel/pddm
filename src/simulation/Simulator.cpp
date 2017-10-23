@@ -173,7 +173,7 @@ void Simulator::setup_queries(const std::set<QueryMode>& query_options) {
  * @param query_num The number of the query that completed.
  * @param result The result of the query.
  */
-void Simulator::query_finished_callback(const int query_num, const std::shared_ptr<messaging::AggregationMessageValue>& result) {
+void Simulator::query_finished_callback(const int query_num, std::shared_ptr<messaging::AggregationMessageValue> result) {
     //query_num is a key in either hour_query_numbers, half_hour_query_numbers, or quarter_hour_query_numbers
     auto query_num_find = hour_query_numbers.find(query_num);
     if(query_num_find == hour_query_numbers.end()) {

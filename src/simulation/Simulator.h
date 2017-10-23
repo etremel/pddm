@@ -76,7 +76,7 @@ class Simulator {
         void setup_queries(const std::set<QueryMode>& query_options);
         /** This function is registered with the simulated utility to be called
          * each time a query completes. */
-        void query_finished_callback(const int query_num, const std::shared_ptr<messaging::AggregationMessageValue>& result);
+        void query_finished_callback(const int query_num, std::shared_ptr<messaging::AggregationMessageValue> result);
 
         /** Randomly chooses METER_FAILURES_PER_QUERY meters to mark as "failed." */
         void fail_meters();
