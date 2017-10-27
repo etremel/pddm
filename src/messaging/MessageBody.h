@@ -7,16 +7,17 @@ namespace pddm {
 namespace messaging {
 
 /**
- * Marker type asserting that the subtype can be the body of a message.
- * This also helps ensure that all message bodies implement ByteRepresentable
- * for easy serialization.
+ * Superclass for all types that can be the body of a message. Ensures that all
+ * message bodies are subtypes of ByteRepresentable, and provides an "interface"
+ * version of from_bytes (not actually virtual) that manually implements dynamic
+ * dispatch to the correct subclass's version of from_bytes.
  */
 class MessageBody : public mutils::ByteRepresentable {
     public:
         virtual ~MessageBody() = default;
         virtual bool operator==(const MessageBody&) const = 0;
 
-        void ensure_registered(mutils::DeserializationManager&) override {}
+        void ensure_registered(mutils::DeserializationManager&) {}
 
         static std::unique_ptr<MessageBody> from_bytes(mutils::DeserializationManager* m, char const * buffer);
 };

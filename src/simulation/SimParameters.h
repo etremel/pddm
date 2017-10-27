@@ -20,7 +20,7 @@ const int SIMULATION_DAYS = 1;
  * this should be a number that divides 1440 (the number of minutes in a day) */
 const int USAGE_TIMESTEP_MIN = 10;
 
-constexpr int TOTAL_TIMESTEPS = 7;
+constexpr int TOTAL_TIMESTEPS = 144;
 
 const int PERCENT_POOR_HOMES = 25;
 const int PERCENT_RICH_HOMES = 25;

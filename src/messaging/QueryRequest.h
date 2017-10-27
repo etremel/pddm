@@ -35,7 +35,7 @@ class QueryRequest: public Message {
         const PriceFunction proposed_price_function;
         QueryRequest(const QueryType& request_type, const int time_window, const int query_number,
                 const PriceFunction& proposed_price_function = PriceFunction{}) :
-            Message(-1, nullptr), //hack, these fields should really be the body of the message. Would it hurt to make a QueryRequestMessageBody?
+            Message(UTILITY_NODE_ID, nullptr), //hack, these fields should really be the body of the message. Would it hurt to make a QueryRequestMessageBody?
             request_type(request_type),
             time_window(time_window),
             query_number(query_number),

@@ -20,6 +20,6 @@
 #include "util/DummyCrypto.h"
 //#include "simulation/SimTimerManager.h"
 #include "util/LinuxTimerManager.h"
-#include "HftProtocolState.h"
-//#include "CtProtocolState.h"
+//#include "HftProtocolState.h"
+#include "CtProtocolState.h"
 //#include "BftProtocolState.h"

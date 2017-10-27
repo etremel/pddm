@@ -23,7 +23,7 @@ using namespace pddm;
 
 void query_finished_callback(const int query_num, std::shared_ptr<messaging::AggregationMessageValue> result) {
     std::cout << "Query " << query_num << " finished." << std::endl;
-    std::cout <<" Result was: " << *result << std::endl;
+    std::cout << "Result was: " << *result << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -34,13 +34,17 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    //Set up static global logging framework
-    auto logger = spdlog::rotating_logger_mt("global_logger", "simulation-log", 1024 * 1024 * 500, 3);
-    logger->set_pattern("[%H:%M:%S.%e] [%l] %v");
-    logger->set_level(spdlog::level::debug);
-
     //First argument is my ID
     int meter_id = std::atoi(argv[1]);
+
+    //Set up static global logging framework
+    std::string filename("emulated_log_node_" + std::to_string(meter_id));
+    std::vector<spdlog::sink_ptr> log_sinks;
+    log_sinks.push_back(std::make_shared<spdlog::sinks::rotating_file_sink_mt>(filename, 1024 * 1024 * 500, 3));
+    log_sinks.push_back(std::make_shared<spdlog::sinks::stdout_sink_mt>());
+    std::shared_ptr<spdlog::logger> logger = spdlog::create("global_logger", log_sinks.begin(), log_sinks.end());
+    logger->set_pattern("[%H:%M:%S.%e] [%l] %v");
+    logger->set_level(spdlog::level::trace);
 
     //Second argument is assumed to be the utility's IP:port
     networking::TcpAddress utility_ip = networking::parse_tcp_string(std::string(argv[2]));
@@ -57,7 +61,7 @@ int main(int argc, char** argv) {
     }
     ProtocolState_t::init_failures_tolerated(num_meters);
 
-    const int NUM_QUERIES = 10;
+    const int NUM_QUERIES = 3;
     const auto TIME_PER_TIMESTEP = std::chrono::seconds(30);
     //An ID of -1 means this should be the utility client, not a meter client
     if(meter_id < 0) {
@@ -66,16 +70,20 @@ int main(int argc, char** argv) {
                 util::crypto_library_builder_utility(),
                 util::timer_manager_builder_utility());
         utility_client->register_query_callback(query_finished_callback);
-        for(int query_count = 0; query_count < NUM_QUERIES; ++query_count) {
-            auto query_req = std::make_shared<messaging::QueryRequest>(messaging::QueryType::CURR_USAGE_SUM, 30, query_count);
-            std::cout << "Starting query " << query_count << std::endl;
-            utility_client->start_query(query_req);
-            int timesteps_in_30_min = 30 / simulation::USAGE_TIMESTEP_MIN;
-            std::this_thread::sleep_for(TIME_PER_TIMESTEP * timesteps_in_30_min);
-        }
-        std::cout << "Done issuing queries, entering infinite loop" << std::endl;
-        while(true) {
-        };
+        //Start a background thread to issue queries
+        std::thread utility_query_thread([NUM_QUERIES, TIME_PER_TIMESTEP, logger, &utility_client]() {
+            for(int query_count = 0; query_count < NUM_QUERIES; ++query_count) {
+                auto query_req = std::make_shared<messaging::QueryRequest>(messaging::QueryType::CURR_USAGE_SUM, 30, query_count);
+                std::cout << "Starting query " << query_count << std::endl;
+                logger->info("Utility starting query {}", query_count);
+                utility_client->start_query(query_req);
+                int timesteps_in_30_min = 30 / simulation::USAGE_TIMESTEP_MIN;
+                std::this_thread::sleep_for(TIME_PER_TIMESTEP * timesteps_in_30_min);
+            }
+            std::cout << "Done issuing queries" << std::endl;
+        });
+        //Start listening for incoming messages. This will not return.
+        utility_client->listen_loop();
     } else {
         networking::TcpAddress my_ip = meter_ips_by_id.at(meter_id);
         std::map<std::string, simulation::Device> possible_devices;
@@ -106,10 +114,10 @@ int main(int argc, char** argv) {
 
         //Start a background thread to repeatedly poke the simulated meter
         std::thread sim_meter_advance_thread([TIME_PER_TIMESTEP, sim_meter]() {
-            while(true) {
-                std::this_thread::sleep_for(TIME_PER_TIMESTEP);
+            for(int timestep = 0; timestep < simulation::TOTAL_TIMESTEPS; ++timestep) {
                 sim_meter->simulate_usage_timestep();
                 std::cout << "Advanced simulated meter by " << simulation::USAGE_TIMESTEP_MIN << " minutes" << std::endl;
+                std::this_thread::sleep_for(TIME_PER_TIMESTEP);
             }
         });
 

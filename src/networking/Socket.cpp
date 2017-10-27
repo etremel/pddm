@@ -25,8 +25,8 @@ Socket::Socket(std::string servername, int port) {
     server = gethostbyname(servername.c_str());
     if(server == nullptr) throw connection_failure(std::string("Error: Could not find host ") + servername);
 
-    char server_ip_cstr[server->h_length];
-    inet_ntop(AF_INET, server->h_addr, server_ip_cstr, server->h_length);
+    char server_ip_cstr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, server->h_addr, server_ip_cstr, sizeof(server_ip_cstr));
     remote_ip = std::string(server_ip_cstr);
 
     sockaddr_in serv_addr;

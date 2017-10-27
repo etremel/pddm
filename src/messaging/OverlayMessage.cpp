@@ -27,7 +27,9 @@ const constexpr MessageBodyType OverlayMessage::type;
 std::ostream& operator<< (std::ostream& out, const OverlayMessage& message) {
     out << "{QueryNum=" << message.query_num << "|Destination=" << message.destination << "|Body=" ;
     //Force C++ to use dynamic dispatch on operator<< even though it doesn't want to
-    if(auto av_body = std::dynamic_pointer_cast<AgreementValue>(message.body)) {
+    if(message.body == nullptr) {
+        out << "null";
+    } else if(auto av_body = std::dynamic_pointer_cast<AgreementValue>(message.body)) {
         out << *av_body;
     } else if(auto pom_body = std::dynamic_pointer_cast<PathOverlayMessage>(message.body)) {
         out << *pom_body;
@@ -39,6 +41,8 @@ std::ostream& operator<< (std::ostream& out, const OverlayMessage& message) {
         out << *string_body;
     } else if(auto vc_body = std::dynamic_pointer_cast<ValueContribution>(message.body)) {
         out << *vc_body;
+    } else {
+        out << "UNKNOWN TYPE @ " << message.body;
     }
     out << "}";
     return out;
@@ -48,7 +52,8 @@ std::size_t OverlayMessage::bytes_size() const {
     return mutils::bytes_size(type)
             + mutils::bytes_size(query_num) + mutils::bytes_size(destination)
             + mutils::bytes_size(is_encrypted) + mutils::bytes_size(flood)
-            + sizeof(bool) + (body == nullptr ? 0 : mutils::bytes_size(*body));
+            + mutils::bytes_size(false) //Represents the "remaining_body" variable
+            + (body == nullptr ? 0 : mutils::bytes_size(*body));
 }
 
 //Is it OK to implement post_object this way?? Or do I have to recursively call post_object,
@@ -71,7 +76,6 @@ std::size_t OverlayMessage::to_bytes_common(char* buffer) const {
     bytes_written += mutils::to_bytes(remaining_body, buffer + bytes_written);
     if(remaining_body) {
         bytes_written += mutils::to_bytes(*body, buffer + bytes_written);
-        bytes_written += mutils::to_bytes(false, buffer + bytes_written);
     }
     return bytes_written;
 }
@@ -95,8 +99,7 @@ std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::Deserializati
     return std::move(constructed_message);
 }
 
-std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_message,
-        char const * buffer) {
+std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_message, char const * buffer) {
     std::size_t bytes_read = 0;
     std::memcpy(&partial_overlay_message.query_num, buffer + bytes_read, sizeof(partial_overlay_message.query_num));
     bytes_read += sizeof(partial_overlay_message.query_num);
@@ -112,6 +115,7 @@ std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_me
     bytes_read += sizeof(remaining_body);
     if(remaining_body) {
         partial_overlay_message.body = mutils::from_bytes<MessageBody>(nullptr, buffer+bytes_read);
+        bytes_read += mutils::bytes_size(*partial_overlay_message.body);
     }
 
     return bytes_read;

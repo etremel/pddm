@@ -5,6 +5,7 @@
  * @author edward
  */
 
+#include <cstring>
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
@@ -53,6 +54,7 @@ BaseTcpClient<Impl>::BaseTcpClient(Impl* subclass_this, const TcpAddress& my_add
     epoll_fd = epoll_create1(0);
     if(epoll_fd < 0) throw connection_failure("Could not create an epoll instance in TcpNetworkClient.");
     struct epoll_event event;
+    memset(&event, 0, sizeof(event));
     event.data.fd = server_socket_fd;
     event.events = EPOLLIN;
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server_socket_fd, &event);

@@ -40,7 +40,7 @@ class TcpUtilityClient;
 }
 
 //Options: CtProtocolState, HftProtocolState, BftProtocolState
-using ProtocolState_t = HftProtocolState;
+using ProtocolState_t = CtProtocolState;
 using Meter_t = simulation::Meter;
 using NetworkClient_t = networking::TcpNetworkClient;
 //using NetworkClient_t = simulation::SimNetworkClient;

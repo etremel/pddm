@@ -37,7 +37,7 @@ void UtilityClient::handle_message(const std::shared_ptr<messaging::AggregationM
 void UtilityClient::handle_message(const std::shared_ptr<messaging::SignatureRequest>& message) {
     if(curr_query_meters_signed.find(message->sender_id) == curr_query_meters_signed.end()) {
         auto signed_value = crypto_library.rsa_sign_encrypted(std::static_pointer_cast<StringBody>(message->body));
-        network.send(std::make_shared<messaging::SignatureResponse>(-1, signed_value), message->sender_id);
+        network.send(std::make_shared<messaging::SignatureResponse>(UTILITY_NODE_ID, signed_value), message->sender_id);
         curr_query_meters_signed.insert(message->sender_id);
     }
 }
@@ -47,6 +47,7 @@ void UtilityClient::start_query(const std::shared_ptr<messaging::QueryRequest>& 
     query_num = query->query_number;
     curr_query_results.clear();
     logger->info("Starting query {}", query_num);
+    query_finished = false;
     for(int meter_id = 0; meter_id < num_meters; ++meter_id) {
         network.send(query, meter_id);
     }
@@ -123,6 +124,10 @@ void UtilityClient::end_query() {
         pending_batch_queries.pop();
         start_query(next_query);
     }
+}
+
+void UtilityClient::listen_loop() {
+    network.monitor_incoming_messages();
 }
 
 /**

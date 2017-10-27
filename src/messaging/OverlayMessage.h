@@ -19,7 +19,9 @@ namespace messaging {
 
 /**
  * This is the payload of an OverlayTransportMessage, which may contain as its body
- * another OverlayMessage if the message is an encrypted onion.
+ * another OverlayMessage if the message is an encrypted onion. Each time an
+ * OverlayMessage is relayed to another node, it is "wrapped" in a new
+ * OverlayTransportMessage.
  */
 class OverlayMessage: public MessageBody {
     public:

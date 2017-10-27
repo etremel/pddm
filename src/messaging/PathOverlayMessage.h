@@ -23,7 +23,8 @@ namespace messaging {
  * Represents a non-onion-encrypted OverlayMessage that must traverse a path
  * through the overlay. The destination field should contain the ID of the next
  * destination on the path, and the remaining_path field should contain a list
- * of the IDs to forward to after destination.
+ * of the IDs to forward to after destination. This is another possible body of
+ * an OverlayTransportMessage.
  */
 class PathOverlayMessage : public OverlayMessage {
     public:

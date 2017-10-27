@@ -7,7 +7,7 @@ BUILD_DIR := build
 LIB_DIR := libraries
 
 CPPFLAGS := -std=c++14 -g3 -O0 -Wall
-#PROD_FLAGS := -std=c++14 -O3
+#PROD_FLAGS := -std=c++14 -DNDEBUG -O3
 
 LFLAGS := -Wl,-rpath='$$ORIGIN/../$(LIB_DIR)/mutils',-rpath='$$ORIGIN/../$(LIB_DIR)/mutils-serialization' -L"$(LIB_DIR)/mutils/" -L"$(LIB_DIR)/mutils-serialization/" 
 INCLUDES := -I"$(SRC_DIR)/" -I"$(LIB_DIR)/" -I"$(LIB_DIR)/mutils/" -I"$(LIB_DIR)/mutils-serialization/"

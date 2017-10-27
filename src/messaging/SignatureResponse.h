@@ -16,6 +16,9 @@
 namespace pddm {
 namespace messaging {
 
+/**
+ * Trivial subclass of Message that specializes its body to be a StringBody.
+ */
 class SignatureResponse: public Message {
     public:
         static const constexpr MessageType type = MessageType::SIGNATURE_RESPONSE;
@@ -53,6 +56,10 @@ class SignatureResponse: public Message {
         }
 
 };
+
+inline std::ostream& operator<< (std::ostream& out, const SignatureResponse& message) {
+    return out << "SignatureResponse with body: " << *(std::static_pointer_cast<StringBody>(message.body));
+}
 
 } /* namespace messaging */
 } /* namespace psm */

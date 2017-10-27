@@ -7,6 +7,11 @@
 
 namespace pddm {
 
+/** The "node ID" that will be used to refer to the utility/system owner in
+ *  messages. The utility is not a node that participates in the overlay, but
+ *  message-passing functions still need to send messages to the utility. */
+const int UTILITY_NODE_ID = -1;
+
 namespace messaging {
 
 /**

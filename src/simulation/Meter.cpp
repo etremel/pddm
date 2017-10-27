@@ -241,11 +241,19 @@ std::vector<FixedPoint_t> Meter::simulate_projected_usage(const PriceFunction& p
 FixedPoint_t Meter::measure(const std::vector<FixedPoint_t>& data, const int window_minutes) const {
     FixedPoint_t window_consumption;
     int windowWholeTimesteps = window_minutes / USAGE_TIMESTEP_MIN;
-    FixedPoint_t windowLastFractionTimestep(window_minutes / (double) USAGE_TIMESTEP_MIN - windowWholeTimesteps);
-    for(int offset = 0; offset < windowWholeTimesteps; offset++) {
-        window_consumption += data[current_timestep-offset];
+    if(windowWholeTimesteps > current_timestep) {
+        //Caller requested more timesteps than have been simulated, so just return what we have
+        for(int i = 0; i <= current_timestep; ++i) {
+            window_consumption += data[i];
+        }
     }
-    window_consumption += (data[current_timestep-windowWholeTimesteps] * windowLastFractionTimestep);
+    else {
+        double windowLastFractionTimestep = window_minutes / (double) USAGE_TIMESTEP_MIN - windowWholeTimesteps;
+        for(int offset = 0; offset < windowWholeTimesteps; offset++) {
+            window_consumption += data[current_timestep-offset];
+        }
+        window_consumption += (data[current_timestep-windowWholeTimesteps] * FixedPoint_t(windowLastFractionTimestep));
+    }
     return window_consumption;
 }
 

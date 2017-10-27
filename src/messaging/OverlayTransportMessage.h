@@ -18,9 +18,18 @@
 namespace pddm {
 namespace messaging {
 
+/**
+ * The type of message that is sent between nodes during any round of the
+ * peer-to-peer overlay. It contains the header fields that change every time a
+ * message is sent, and "wraps" a body message that may be relayed unchanged
+ * over several rounds of messaging.
+ */
 class OverlayTransportMessage: public Message {
     public:
         static const constexpr MessageType type = MessageType::OVERLAY;
+        /** An OverlayTransportMessage may contain an OverlayMessage or a
+         *  subclass of OverlayMessage, but OverlayMessage will at least be
+         *  a valid cast target. */
         using body_type = OverlayMessage;
         int sender_round;
         bool is_final_message;
@@ -35,11 +44,7 @@ class OverlayTransportMessage: public Message {
         static std::unique_ptr<OverlayTransportMessage> from_bytes(mutils::DeserializationManager* m, char const * buffer);
 };
 
-inline std::ostream& operator<< (std::ostream& out, const OverlayTransportMessage& message) {
-    out << "{SenderRound=" << message.sender_round << "|Final=" << std::boolalpha << message.is_final_message
-            << "|" << *std::static_pointer_cast<OverlayTransportMessage::body_type>(message.body) << "}";
-    return out;
-}
+std::ostream& operator<< (std::ostream& out, const OverlayTransportMessage& message);
 
 
 } /* namespace messaging */

@@ -16,6 +16,10 @@
 namespace pddm {
 namespace messaging {
 
+/**
+ * A simple message that represents a ping, asking the recipient to respond if
+ * it is still alive.
+ */
 class PingMessage: public Message {
     public:
         static const constexpr MessageType type = MessageType::PING;
@@ -49,6 +53,7 @@ class PingMessage: public Message {
         static std::unique_ptr<PingMessage> from_bytes(mutils::DeserializationManager* m, const char* buffer) ;
 };
 
+std::ostream& operator<< (std::ostream& out, const PingMessage& message);
 
 } /* namespace messaging */
 } /* namespace psm */

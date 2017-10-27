@@ -55,5 +55,10 @@ std::unique_ptr<PingMessage> PingMessage::from_bytes(mutils::DeserializationMana
     return std::make_unique<PingMessage>(sender_id, is_response);
 }
 
+
+std::ostream& operator<< (std::ostream& out, const PingMessage& message) {
+    return out << "Ping from " << message.sender_id << ", is_response = " << std::boolalpha << message.is_response;
+}
+
 }
 }

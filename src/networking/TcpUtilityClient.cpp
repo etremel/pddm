@@ -7,10 +7,13 @@
 
 #include "TcpUtilityClient.h"
 
+#include <mutils-serialization/SerializationSupport.hpp>
+
 #include "../messaging/AggregationMessage.h"
 #include "../messaging/SignatureRequest.h"
 #include "../messaging/SignatureResponse.h"
 #include "../UtilityClient.h"
+
 
 namespace pddm {
 namespace networking {
@@ -27,7 +30,7 @@ void TcpUtilityClient::send(const std::shared_ptr<messaging::QueryRequest>& mess
     bool success = true;
     auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = recipient_socket.write(bytes, size) && success; };
     //Meter clients expect a "number of messages" first
-    mutils::post_object(bind_socket_write, 1);
+    mutils::post_object(bind_socket_write, static_cast<std::size_t>(1));
     mutils::post_object(bind_socket_write, *message);
 }
 
@@ -36,7 +39,7 @@ void TcpUtilityClient::send(const std::shared_ptr<messaging::SignatureResponse>&
     bool success = true;
     auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = recipient_socket.write(bytes, size) && success; };
     //Meter clients expect a "number of messages" first
-    mutils::post_object(bind_socket_write, 1);
+    mutils::post_object(bind_socket_write, static_cast<std::size_t>(1));
     mutils::post_object(bind_socket_write, *message);
 }
 
@@ -52,15 +55,13 @@ void TcpUtilityClient::receive_message(const std::vector<char>& message_bytes) {
     //Deserialize the correct message subclass based on the type, and call the correct handler
     switch(message_type) {
     case AggregationMessage::type: {
-        auto message_unique = mutils::from_bytes<AggregationMessage>(nullptr, buffer);
-        std::shared_ptr<AggregationMessage> message_shared(message_unique.release());
-        utility_client.handle_message(message_shared);
+        std::shared_ptr<AggregationMessage> message{mutils::from_bytes<AggregationMessage>(nullptr, buffer)};
+        utility_client.handle_message(message);
         break;
     }
     case SignatureRequest::type: {
-        auto message_unique = mutils::from_bytes<SignatureRequest>(nullptr, buffer);
-        std::shared_ptr<SignatureRequest> message_shared(message_unique.release());
-        utility_client.handle_message(message_shared);
+        std::shared_ptr<SignatureRequest> message(mutils::from_bytes<SignatureRequest>(nullptr, buffer));
+        utility_client.handle_message(message);
         break;
     }
     default:

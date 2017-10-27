@@ -74,7 +74,9 @@ class UtilityClient {
         /** Handles receiving a SignatureRequest from a meter, by signing the requested value. */
         void handle_message(const std::shared_ptr<messaging::SignatureRequest>& message);
 
-        /** Starts a query by broadcasting a message from the utility to all the meters in the network.*/
+        /** Starts a query by broadcasting a message from the utility to all the meters in the network.
+         * Do not call this while an existing query is still in progress, or the existing query's
+         * results will be lost. */
         void start_query(const std::shared_ptr<messaging::QueryRequest>& query);
 
         /** Starts a batch of queries that should be executed in sequence as quickly as possible */
@@ -88,6 +90,12 @@ class UtilityClient {
 
         /** Gets the stored result of a query that has completed. */
         std::shared_ptr<messaging::AggregationMessageValue> get_query_result(const int query_num) { return all_query_results.at(query_num); }
+
+        /** Starts an infinite loop that listens for incoming messages (i.e.
+         * query responses) and reacts to them. This function call never
+         * returns, so it should be run in a separate thread from any start_query
+         * calls. */
+        void listen_loop();
 
         /** The maximum time (ms) the utility is willing to wait on a network round-trip */
         static constexpr int NETWORK_ROUNDTRIP_TIMEOUT = 100;
