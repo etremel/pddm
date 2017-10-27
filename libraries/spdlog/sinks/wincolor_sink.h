@@ -5,9 +5,9 @@
 
 #pragma once
 
-#include <spdlog/sinks/base_sink.h>
-#include <spdlog/details/null_mutex.h>
-#include <spdlog/common.h>
+#include "spdlog/sinks/base_sink.h"
+#include "spdlog/details/null_mutex.h"
+#include "spdlog/common.h"
 
 #include <mutex>
 #include <string>
@@ -44,12 +44,13 @@ public:
 
     virtual ~wincolor_sink()
     {
-        flush();
+        this->flush();
     }
 
     wincolor_sink(const wincolor_sink& other) = delete;
     wincolor_sink& operator=(const wincolor_sink& other) = delete;
 
+protected:
     virtual void _sink_it(const details::log_msg& msg) override
     {
         auto color = colors_[msg.level];
@@ -58,7 +59,7 @@ public:
         SetConsoleTextAttribute(out_handle_, orig_attribs); //reset to orig colors
     }
 
-    virtual void flush() override
+    virtual void _flush() override
     {
         // windows console always flushed?
     }
@@ -66,7 +67,7 @@ public:
     // change the  color for the given level
     void set_color(level::level_enum level, WORD color)
     {
-        std::lock_guard<Mutex> lock(_mutex);
+        std::lock_guard<Mutex> lock(base_sink<Mutex>::_mutex);
         colors_[level] = color;
     }
 
@@ -79,7 +80,11 @@ private:
     {
         CONSOLE_SCREEN_BUFFER_INFO orig_buffer_info;
         GetConsoleScreenBufferInfo(out_handle_, &orig_buffer_info);
-        SetConsoleTextAttribute(out_handle_, attribs);
+        WORD back_color = orig_buffer_info.wAttributes;
+        // retrieve the current background color
+        back_color &= ~(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+        // keep the background color unchanged
+        SetConsoleTextAttribute(out_handle_, attribs | back_color);
         return  orig_buffer_info.wAttributes; //return orig attribs
     }
 };
@@ -91,7 +96,7 @@ template<class Mutex>
 class wincolor_stdout_sink: public wincolor_sink<Mutex>
 {
 public:
-    wincolor_stdout_sink():wincolor_sink(GetStdHandle(STD_OUTPUT_HANDLE))
+    wincolor_stdout_sink() : wincolor_sink<Mutex>(GetStdHandle(STD_OUTPUT_HANDLE))
     {}
 };
 
@@ -105,7 +110,7 @@ template<class Mutex>
 class wincolor_stderr_sink: public wincolor_sink<Mutex>
 {
 public:
-    wincolor_stderr_sink():wincolor_sink(GetStdHandle(STD_ERROR_HANDLE))
+    wincolor_stderr_sink() : wincolor_sink<Mutex>(GetStdHandle(STD_ERROR_HANDLE))
     {}
 };
 

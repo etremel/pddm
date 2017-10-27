@@ -18,11 +18,17 @@
 #ifndef FMT_USE_WINDOWS_H
 #define FMT_USE_WINDOWS_H 0
 #endif
-#include <spdlog/fmt/bundled/format.h>
+#include "spdlog/fmt/bundled/format.h"
+#if defined(SPDLOG_FMT_PRINTF)
+#include "spdlog/fmt/bundled/printf.h"
+#endif
 
 #else //external fmtlib
 
 #include <fmt/format.h>
+#if defined(SPDLOG_FMT_PRINTF)
+#include <fmt/printf.h>
+#endif
 
 #endif
 
