@@ -65,7 +65,7 @@ void QueryRequest::post_object(const std::function<void(const char* const, std::
 
 }
 
-std::unique_ptr<QueryRequest> QueryRequest::from_bytes(mutils::DeserializationManager* m, const char* buffer) {
+std::unique_ptr<QueryRequest> QueryRequest::from_bytes(mutils::DeserializationManager<>* m, const char* buffer) {
     std::size_t bytes_read = 0;
     MessageType message_type;
     std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));

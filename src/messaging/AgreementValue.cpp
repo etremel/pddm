@@ -39,7 +39,7 @@ void AgreementValue::post_object(const std::function<void (char const * const,st
     consumer(buffer, bytes_size());
 }
 
-std::unique_ptr<AgreementValue> AgreementValue::from_bytes(mutils::DeserializationManager* p, const char* buffer) {
+std::unique_ptr<AgreementValue> AgreementValue::from_bytes(mutils::DeserializationManager<>* p, const char* buffer) {
     std::unique_ptr<SignedValue> signedval = mutils::from_bytes<SignedValue>(p, buffer);
     std::size_t bytes_read = mutils::bytes_size(*signedval);
     int accepter_id;

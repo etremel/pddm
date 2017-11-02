@@ -41,13 +41,13 @@ class SignedValue : public MessageBody {
         std::size_t bytes_size() const override;
         std::size_t to_bytes(char* buffer) const override;
         void post_object(const std::function<void (char const * const,std::size_t)>& function) const override;
-        static std::unique_ptr<SignedValue> from_bytes(mutils::DeserializationManager *p, const char* buffer);
+        static std::unique_ptr<SignedValue> from_bytes(mutils::DeserializationManager<> *p, const char* buffer);
     private:
         //Helper functions for the signatures map
         //I don't have time to make this generic for all std::maps
         static std::size_t bytes_size(const std::map<int, util::SignatureArray>& sig_map);
         static std::size_t to_bytes(const std::map<int, util::SignatureArray>& sig_map, char * buffer);
-        static std::unique_ptr<std::map<int, util::SignatureArray>> from_bytes_map(mutils::DeserializationManager* p, const char* buffer);
+        static std::unique_ptr<std::map<int, util::SignatureArray>> from_bytes_map(mutils::DeserializationManager<>* p, const char* buffer);
 };
 
 inline std::ostream& operator<<(std::ostream& out, const SignedValue& s) {

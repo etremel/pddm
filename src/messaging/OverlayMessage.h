@@ -73,7 +73,7 @@ class OverlayMessage: public MessageBody {
          * OverlayMessage::to_bytes(char*).
          * @return A new OverlayMessage reconstructed from the serialized bytes.
          */
-        static std::unique_ptr<OverlayMessage> from_bytes(mutils::DeserializationManager* p, const char * buffer);
+        static std::unique_ptr<OverlayMessage> from_bytes(mutils::DeserializationManager<>* p, const char * buffer);
 
     protected:
         /** Default constructor, used only when reconstructing serialized messages */

@@ -42,7 +42,6 @@ class PingMessage: public Message {
          */
         std::size_t to_bytes(char* buffer) const;
         void post_object(const std::function<void (char const * const,std::size_t)>& f) const;
-        void ensure_registered(mutils::DeserializationManager&){}
         /**
          * Creates a new PingMessage by deserializing the contents of {@code buffer},
          * blindly assuming that the buffer is large enough to contain a PingMessage.
@@ -50,7 +49,7 @@ class PingMessage: public Message {
          * to_bytes(char*).
          * @return A new PingMessage reconstructed from the serialized bytes.
          */
-        static std::unique_ptr<PingMessage> from_bytes(mutils::DeserializationManager* m, const char* buffer) ;
+        static std::unique_ptr<PingMessage> from_bytes(mutils::DeserializationManager<>* m, const char* buffer) ;
 };
 
 std::ostream& operator<< (std::ostream& out, const PingMessage& message);

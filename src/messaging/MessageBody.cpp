@@ -20,7 +20,7 @@
 namespace pddm {
 namespace messaging {
 
-std::unique_ptr<MessageBody> MessageBody::from_bytes(mutils::DeserializationManager* m, char const * buffer) {
+std::unique_ptr<MessageBody> MessageBody::from_bytes(mutils::DeserializationManager<>* m, char const * buffer) {
     //Reinterpret the first sizeof(MessageBodyType) bytes of buffer
     MessageBodyType body_type = *((MessageBodyType*)(buffer));
     //Dispatch to the correct subclass from_bytes based on the type

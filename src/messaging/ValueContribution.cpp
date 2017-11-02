@@ -40,7 +40,7 @@ std::size_t ValueContribution::bytes_size() const {
             (signature.size() * sizeof(util::SignatureArray::value_type));
 }
 
-std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::DeserializationManager* m, const char* buffer) {
+std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::DeserializationManager<>* m, const char* buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));

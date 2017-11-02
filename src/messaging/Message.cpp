@@ -36,7 +36,7 @@ void Message::post_object(const std::function<void(const char* const, std::size_
     mutils::post_object(function, *body);
 }
 
-std::unique_ptr<Message> Message::from_bytes(mutils::DeserializationManager* m, char const * buffer) {
+std::unique_ptr<Message> Message::from_bytes(mutils::DeserializationManager<>* m, char const * buffer) {
     //Peek at the first sizeof(MessageType) bytes of buffer to determine the MessageType
     MessageType message_type = *((MessageType*)(buffer));
     //Dispatch to the correct subclass from_bytes based on the type

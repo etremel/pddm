@@ -40,7 +40,7 @@ class SignatureResponse: public Message {
             mutils::post_object(function, type);
             Message::post_object(function);
         }
-        static std::unique_ptr<SignatureResponse> from_bytes(mutils::DeserializationManager* m, char const * buffer) {
+        static std::unique_ptr<SignatureResponse> from_bytes(mutils::DeserializationManager<>* m, char const * buffer) {
             std::size_t bytes_read = 0;
             MessageType message_type;
             std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));

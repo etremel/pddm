@@ -87,7 +87,7 @@ std::size_t OverlayMessage::to_bytes(char* buffer) const {
     return bytes_written;
 }
 
-std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::DeserializationManager* p, char const * buffer) {
+std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::DeserializationManager<>* p, char const * buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));

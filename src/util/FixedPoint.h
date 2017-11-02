@@ -56,11 +56,10 @@ class FixedPoint : public mutils::ByteRepresentable {
         //Serialization support
         std::size_t bytes_size() const { return mutils::bytes_size(m); }
         std::size_t to_bytes(char* buf) const { return mutils::to_bytes(m, buf); }
-        void ensure_registered(mutils::DeserializationManager&){}
         void post_object(const std::function<void (char const * const,std::size_t)>& f) const {
             mutils::post_object(f, m);
         }
-        static std::unique_ptr<FixedPoint> from_bytes(mutils::DeserializationManager* p, const char* buf) {
+        static std::unique_ptr<FixedPoint> from_bytes(mutils::DeserializationManager<>* p, const char* buf) {
             Base internal_int;
             std::memcpy(&internal_int, buf, sizeof(Base));
             //std::make_unique bizarrely fails if used with a private constructor,

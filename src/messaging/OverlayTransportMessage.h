@@ -41,7 +41,7 @@ class OverlayTransportMessage: public Message {
         std::size_t bytes_size() const;
         std::size_t to_bytes(char* buffer) const;
         void post_object(const std::function<void (char const * const,std::size_t)>&) const;
-        static std::unique_ptr<OverlayTransportMessage> from_bytes(mutils::DeserializationManager* m, char const * buffer);
+        static std::unique_ptr<OverlayTransportMessage> from_bytes(mutils::DeserializationManager<>* m, char const * buffer);
 };
 
 std::ostream& operator<< (std::ostream& out, const OverlayTransportMessage& message);

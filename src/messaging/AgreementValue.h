@@ -41,7 +41,7 @@ struct AgreementValue : public MessageBody {
         std::size_t bytes_size() const;
         std::size_t to_bytes(char* buffer) const;
         void post_object(const std::function<void (char const * const,std::size_t)>&) const;
-        static std::unique_ptr<AgreementValue> from_bytes(mutils::DeserializationManager *p, const char* buffer);
+        static std::unique_ptr<AgreementValue> from_bytes(mutils::DeserializationManager<> *p, const char* buffer);
 };
 
 inline std::ostream& operator<<(std::ostream& out, const AgreementValue val) {

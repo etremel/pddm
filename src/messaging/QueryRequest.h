@@ -51,7 +51,7 @@ class QueryRequest: public Message {
         std::size_t bytes_size() const;
         std::size_t to_bytes(char* buffer) const;
         void post_object(const std::function<void (char const * const,std::size_t)>& consumer) const;
-        static std::unique_ptr<QueryRequest> from_bytes(mutils::DeserializationManager* m, const char* buffer);
+        static std::unique_ptr<QueryRequest> from_bytes(mutils::DeserializationManager<>* m, const char* buffer);
 };
 
 std::ostream& operator<<(std::ostream& out, const QueryRequest& qr);

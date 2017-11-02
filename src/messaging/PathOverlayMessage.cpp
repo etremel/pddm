@@ -51,7 +51,7 @@ std::size_t PathOverlayMessage::bytes_size() const {
     return OverlayMessage::bytes_size() + mutils::bytes_size(remaining_path);
 }
 
-std::unique_ptr<PathOverlayMessage> PathOverlayMessage::from_bytes(mutils::DeserializationManager* m, char const * buffer) {
+std::unique_ptr<PathOverlayMessage> PathOverlayMessage::from_bytes(mutils::DeserializationManager<>* m, char const * buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));

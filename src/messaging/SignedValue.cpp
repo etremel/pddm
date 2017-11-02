@@ -34,7 +34,7 @@ std::size_t SignedValue::to_bytes(const std::map<int, util::SignatureArray>& sig
     return bytes_written;
 }
 
-std::unique_ptr<std::map<int, util::SignatureArray>> SignedValue::from_bytes_map(mutils::DeserializationManager* p, const char* buffer) {
+std::unique_ptr<std::map<int, util::SignatureArray>> SignedValue::from_bytes_map(mutils::DeserializationManager<>* p, const char* buffer) {
     std::size_t bytes_read = 0;
     int size;
     std::memcpy((char*) &size, buffer, sizeof(size));
@@ -73,7 +73,7 @@ void SignedValue::post_object(const std::function<void(const char* const, std::s
     function(buffer, bytes_size());
 }
 
-std::unique_ptr<SignedValue> SignedValue::from_bytes(mutils::DeserializationManager* p, const char* buffer) {
+std::unique_ptr<SignedValue> SignedValue::from_bytes(mutils::DeserializationManager<>* p, const char* buffer) {
     //Read the ValueContribution, which will also read past the MessageBodyType
     std::unique_ptr<ValueContribution> contribution = mutils::from_bytes<ValueContribution>(p, buffer);
     std::size_t bytes_read = mutils::bytes_size(*contribution);

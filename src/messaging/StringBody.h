@@ -68,8 +68,7 @@ class StringBody : public MessageBody {
             mutils::post_object(f, type);
             mutils::post_object(f, data);
         }
-        void ensure_registered(mutils::DeserializationManager&){}
-        static std::unique_ptr<StringBody> from_bytes(mutils::DeserializationManager* m, char const* buffer) {
+        static std::unique_ptr<StringBody> from_bytes(mutils::DeserializationManager<>* m, char const* buffer) {
             /*"Skip past the MessageBodyType, then take the deserialized string
              * and wrap it in a new StringBody"*/
             return std::make_unique<StringBody>(

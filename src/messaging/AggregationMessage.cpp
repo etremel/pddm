@@ -73,7 +73,7 @@ void AggregationMessage::post_object(const std::function<void(const char* const,
     Message::post_object(function);
 }
 
-std::unique_ptr<AggregationMessage> AggregationMessage::from_bytes(mutils::DeserializationManager* m, const char* buffer) {
+std::unique_ptr<AggregationMessage> AggregationMessage::from_bytes(mutils::DeserializationManager<>* m, const char* buffer) {
     std::size_t bytes_read = 0;
     MessageType message_type;
     std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));

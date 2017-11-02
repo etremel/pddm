@@ -84,8 +84,7 @@ class AggregationMessageValue : public MessageBody {
             mutils::post_object(f, type);
             mutils::post_object(f, data);
         }
-        void ensure_registered(mutils::DeserializationManager&){}
-        static std::unique_ptr<AggregationMessageValue> from_bytes(mutils::DeserializationManager* m, char const* buffer) {
+        static std::unique_ptr<AggregationMessageValue> from_bytes(mutils::DeserializationManager<>* m, char const* buffer) {
             /*"Skip past the MessageBodyType, then take the deserialized vector
              * and wrap it in a new AggregationMessageValue"*/
             return std::make_unique<AggregationMessageValue>(
@@ -121,7 +120,7 @@ class AggregationMessage: public Message {
         std::size_t bytes_size() const;
         std::size_t to_bytes(char* buffer) const;
         void post_object(const std::function<void (char const * const,std::size_t)>&) const;
-        static std::unique_ptr<AggregationMessage> from_bytes(mutils::DeserializationManager *p, const char* buffer);
+        static std::unique_ptr<AggregationMessage> from_bytes(mutils::DeserializationManager<> *p, const char* buffer);
 
         friend bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs);
         friend struct std::hash<AggregationMessage>;
