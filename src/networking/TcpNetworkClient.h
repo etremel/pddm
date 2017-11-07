@@ -21,17 +21,12 @@ class MeterClient;
 namespace pddm {
 namespace networking {
 
-class Socket;
-class ConnectionListener;
-
-
 class TcpNetworkClient : public BaseTcpClient<TcpNetworkClient>, public NetworkClient {
         friend class BaseTcpClient;
     private:
         std::shared_ptr<spdlog::logger> logger;
         /** The MeterClient that owns this TCPNetworkClient */
         MeterClient& meter_client;
-        TcpAddress utility_address;
         /** Message count tracker for experiment graphs. */
         int num_messages_sent;
     protected:
@@ -42,7 +37,8 @@ class TcpNetworkClient : public BaseTcpClient<TcpNetworkClient>, public NetworkC
          * sockets. For now, the list of all meter IP addresses/ports must be
          * statically configured and set at startup (eventually, it would be
          * nice to provide a way for the utility/server to dynamically configure
-         * clients)
+         * clients). When this constructor is called, the client will open a
+         * socket connection to the utility at the provided TCP address.
          * @param owning_meter_client The MeterClient that this NetworkClient
          * is a component of
          * @param my_address The IP address of the node running this NetworkClient

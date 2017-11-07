@@ -130,6 +130,10 @@ void UtilityClient::listen_loop() {
     network.monitor_incoming_messages();
 }
 
+void UtilityClient::shut_down() {
+    network.shut_down();
+}
+
 /**
  * This allows other components running at the utility to be notified when a
  * query they sent using this UtilityClient (e.g. through start_query) has

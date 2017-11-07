@@ -146,4 +146,8 @@ void MeterClient::main_loop() {
     network_client.monitor_incoming_messages();
 }
 
+void MeterClient::shut_down() {
+    network_client.shut_down();
+}
+
 } /* namespace pddm */

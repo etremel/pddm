@@ -97,6 +97,10 @@ class UtilityClient {
          * calls. */
         void listen_loop();
 
+        /** Shuts down the message-listening loop to allow the client to exit cleanly.
+         * Obviously, this must be called from a separate thread from listen_loop().  */
+        void shut_down();
+
         /** The maximum time (ms) the utility is willing to wait on a network round-trip */
         static constexpr int NETWORK_ROUNDTRIP_TIMEOUT = 100;
     private:

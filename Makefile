@@ -6,12 +6,12 @@ SRC_DIR := src
 BUILD_DIR := build
 LIB_DIR := libraries
 
-CPPFLAGS := -std=c++14 -g3 -O0 -Wall
-#PROD_FLAGS := -std=c++14 -DNDEBUG -O3
+CPPFLAGS := -std=c++17 -g3 -O0 -Wall
+#PROD_FLAGS := -std=c++17 -DNDEBUG -O3
 
 LFLAGS := -Wl,-rpath='$$ORIGIN/../$(LIB_DIR)/mutils',-rpath='$$ORIGIN/../$(LIB_DIR)/mutils-serialization' -L"$(LIB_DIR)/mutils/" -L"$(LIB_DIR)/mutils-serialization/" 
 INCLUDES := -I"$(SRC_DIR)/" -I"$(LIB_DIR)/" -I"$(LIB_DIR)/mutils/" -I"$(LIB_DIR)/mutils-serialization/"
-LIBS := -lmutils -lmutils-serialization -lpthread -lrt
+LIBS := -lmutils -lmutils-serialization -lpthread -lrt 
 
 #Lazily evaluated: SRCS won't be defined until a target is chosen
 OBJS = $(SRCS:$(SRC_DIR)/%=$(BUILD_DIR)/%.o)
@@ -35,10 +35,12 @@ SIMPLE_MESSAGING_TEST_SRCS := SimpleMessagingTest.cpp
 SIMPLE_MESSAGING_TEST_SRCS := $(addprefix $(SRC_DIR)/,$(SIMPLE_MESSAGING_TEST_SRCS))
 SIMPLE_MESSAGING_TEST_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
 
+-include $(DEPS)
+
 #Generic object-from-cpp rule
 $(BUILD_DIR)/%.cpp.o: $(SRC_DIR)/%.cpp
 	$(MKDIR_P) $(dir $@)
-	$(CXX) $(CPPFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(INCLUDES) -MMD -c $< -o $@
 
 
 AllSimulated: SRCS = $(COMMON_SRCS) $(ALL_SIM_SRCS)
@@ -66,5 +68,4 @@ simple_messaging_test: $$(OBJS)
 clean:
 	$(RM) -r $(BUILD_DIR)
 
--include $(DEPS)
 

@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string>
+#include <iostream>
 
 #include "BaseTcpClient.h"
 #include "Socket.h"
@@ -24,7 +25,8 @@ template<typename Impl>
 BaseTcpClient<Impl>::BaseTcpClient(Impl* subclass_this, const TcpAddress& my_address,
         const std::map<int, TcpAddress>& meter_ips_by_id) :
         impl_this(subclass_this),
-        id_to_ip_map(meter_ips_by_id) {
+        id_to_ip_map(meter_ips_by_id),
+        shutdown(false) {
     //Create socket
     server_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_socket_fd < 0) throw connection_failure("Could not create a socket to listen for incoming connections.");
@@ -62,7 +64,20 @@ BaseTcpClient<Impl>::BaseTcpClient(Impl* subclass_this, const TcpAddress& my_add
 
 template<typename Impl>
 BaseTcpClient<Impl>::~BaseTcpClient() {
+    shutdown = true;
     close(server_socket_fd);
+}
+
+template<typename Impl>
+void BaseTcpClient<Impl>::shut_down() {
+    shutdown = true;
+    //Open and close a connection to myself to make epoll_wait wake up and do nothing
+    sockaddr_in my_address;
+    socklen_t size_of_sockaddr = sizeof(my_address);
+    memset(&my_address, 0, sizeof(my_address));
+    getsockname(server_socket_fd, (struct sockaddr*) &my_address, &size_of_sockaddr);
+    Socket dummy{"127.0.0.1", my_address.sin_port};
+    dummy.write("", 0);
 }
 
 template<typename Impl>
@@ -71,9 +86,8 @@ void BaseTcpClient<Impl>::monitor_incoming_messages() {
     struct epoll_event* events = (struct epoll_event*) calloc(EVENTS_LENGTH, sizeof(struct epoll_event));
     //Indexed by FD, since that's all the information we get when a socket has data
     std::map<int, std::vector<char>> sender_buffers;
-    //This really is an infinite loop.
-    while(true) {
-        int num_events = epoll_wait(epoll_fd, events, EVENTS_LENGTH, -1);
+    while(!shutdown) {
+        int num_events = epoll_wait(epoll_fd, events, EVENTS_LENGTH, 100);
         for(int i = 0; i < num_events; ++i) {
 
             if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) ||
@@ -110,7 +124,7 @@ void BaseTcpClient<Impl>::monitor_incoming_messages() {
 //                                "(host=%s, port=%s)\n", incoming_fd, host_buf, port_buf);
 //                    }
                     //Allocate a fresh buffer for the data sent by this sender
-                    sender_buffers[incoming_fd] = std::vector<char>{};
+                    sender_buffers.emplace(incoming_fd, std::vector<char>{});
 
                     //Make the incoming socket non-blocking and add it to the list of fds to monitor.,
                     int flags;
@@ -121,6 +135,7 @@ void BaseTcpClient<Impl>::monitor_incoming_messages() {
                     }
 
                     struct epoll_event event;
+                    memset(&event, 0, sizeof(event));
                     event.data.fd = incoming_fd;
                     event.events = EPOLLIN;
                     int success = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, incoming_fd, &event);
@@ -132,36 +147,31 @@ void BaseTcpClient<Impl>::monitor_incoming_messages() {
             }
             else {
                 //We have data on a socket FD waiting to be read, so read it off
-                bool done = false;
-                while (true) {
-                    char buf[512];
-
-                    ssize_t count = read(events[i].data.fd, buf, sizeof buf);
-                    if (count == -1) {
-                        /* If errno == EAGAIN, that means we have read all
-                         data. So we can break out of this loop. */
-                        if (errno != EAGAIN) {
-                            perror("read");
-                            done = true;
-                        }
-                        break;
-                    } else if (count == 0) {
-                        /* End of file. The remote has closed the connection. */
-                        done = true;
-                        break;
-                    }
-                    //Append count bytes from buf to the buffer associated with this sender
-                    sender_buffers[events[i].data.fd].insert(
-                            sender_buffers[events[i].data.fd].end(), buf, (buf + count));
-
-                }
-
-                if (done) {
+                /* In all PDDM messaging protocols, the first 4 bytes are a size_t
+                 * containing the size of the rest of the message */
+                std::size_t message_size;
+                ssize_t int_bytes_read = recv(events[i].data.fd, (char*)&message_size, sizeof(message_size), MSG_WAITALL);
+                if(int_bytes_read == 0) {
+                    //If the very first read is zero, the client has closed the connection
                     close(events[i].data.fd);
-                    //Entire message has been received, so we can handle it
-                    impl_this->receive_message(sender_buffers.at(events[i].data.fd));
-                    sender_buffers.erase(events[i].data.fd);
+                    continue;
+                } else if(int_bytes_read != sizeof(message_size)) {
+                    perror("Failed to read the first 4 bytes of an incoming message!");
+                    continue;
                 }
+                sender_buffers[events[i].data.fd].resize(message_size);
+                /* Block until the entire message has been read - the sender should have
+                 * packed it into one send, so this won't block for very long. */
+                ssize_t msg_bytes_read = recv(events[i].data.fd, sender_buffers[events[i].data.fd].data(), message_size, MSG_WAITALL);
+                if(msg_bytes_read != message_size) {
+                    //Client must have failed or disconnected
+                    perror("Failure while reading a message from a client");
+                    sender_buffers.erase(events[i].data.fd);
+                    continue;
+                }
+                //Handle the message
+                impl_this->receive_message(sender_buffers.at(events[i].data.fd));
+                sender_buffers.erase(events[i].data.fd);
             }
         }
     }

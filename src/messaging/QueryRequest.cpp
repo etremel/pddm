@@ -37,7 +37,8 @@ std::ostream& operator<<(std::ostream& out, const QueryType& type) {
 const constexpr MessageType QueryRequest::type;
 
 std::size_t QueryRequest::bytes_size() const {
-    return mutils::bytes_size(sender_id) +
+    return mutils::bytes_size(type) +
+            mutils::bytes_size(sender_id) +
             mutils::bytes_size(request_type) +
             mutils::bytes_size(time_window) +
             mutils::bytes_size(query_number);// +

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <map>
 #include <vector>
 
@@ -14,6 +15,8 @@
 
 namespace pddm {
 namespace networking {
+
+class Socket;
 
 /**
  * Contains the common implementation details of TcpNetworkClient and
@@ -30,10 +33,15 @@ class BaseTcpClient {
     protected:
         /** Maps Meter IDs to IP address/port pairs. */
         std::map<int, TcpAddress> id_to_ip_map;
+        /** Cache of open sockets to meters, lazily initialized (the socket
+         * is created the first time a message is sent to that meter). This
+         * may also contain a socket for the utility, at entry -1. */
+        std::map<int, Socket> sockets_by_id;
     private:
         /** File descriptor for monitoring incoming connections */
         int epoll_fd;
         int server_socket_fd;
+        std::atomic<bool> shutdown;
     protected:
         BaseTcpClient(Impl* subclass_this, const TcpAddress& my_address, const std::map<int, TcpAddress>& meter_ips_by_id);
         virtual ~BaseTcpClient();
@@ -45,6 +53,12 @@ class BaseTcpClient {
          * dedicate a thread to it.
          */
         void monitor_incoming_messages();
+        /**
+         * Shuts down the monitor_incoming_messages() loop. Can be called from a
+         * different thread to allow the monitor_incoming_messages() thread to
+         * terminate.
+         */
+        void shut_down();
 };
 
 } /* namespace networking */

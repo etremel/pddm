@@ -9,6 +9,7 @@
 
 #include <mutils-serialization/SerializationSupport.hpp>
 
+#include "Socket.h"
 #include "../messaging/AggregationMessage.h"
 #include "../messaging/SignatureRequest.h"
 #include "../messaging/SignatureResponse.h"
@@ -26,21 +27,38 @@ TcpUtilityClient::TcpUtilityClient(UtilityClient& owning_utility_client, const T
 
 
 void TcpUtilityClient::send(const std::shared_ptr<messaging::QueryRequest>& message, const int recipient_id) {
-    Socket recipient_socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port);
-    bool success = true;
-    auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = recipient_socket.write(bytes, size) && success; };
+    //Construct a new socket for this node if there is not one already in the map
+    auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
+    if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
+        sockets_by_id.emplace_hint(socket_map_find, recipient_id,
+                Socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port));
+    }
     //Meter clients expect a "number of messages" first
-    mutils::post_object(bind_socket_write, static_cast<std::size_t>(1));
-    mutils::post_object(bind_socket_write, *message);
+    const std::size_t num_messages = 1;
+    std::size_t send_size = mutils::bytes_size(num_messages) + mutils::bytes_size(*message);
+    char buffer[send_size + sizeof(send_size)];
+    std::memcpy(buffer, (char*)&send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    bytes_written += mutils::to_bytes(num_messages, buffer + bytes_written);
+    bytes_written += mutils::to_bytes(*message, buffer + bytes_written);
+    sockets_by_id.at(recipient_id).write(buffer, send_size + sizeof(send_size));
 }
 
 void TcpUtilityClient::send(const std::shared_ptr<messaging::SignatureResponse>& message, const int recipient_id) {
-    Socket recipient_socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port);
-    bool success = true;
-    auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = recipient_socket.write(bytes, size) && success; };
-    //Meter clients expect a "number of messages" first
-    mutils::post_object(bind_socket_write, static_cast<std::size_t>(1));
-    mutils::post_object(bind_socket_write, *message);
+    //Exactly the same as the other send(), but must be re-implemented becuase the message is a different type
+    auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
+    if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
+        sockets_by_id.emplace_hint(socket_map_find, recipient_id,
+                Socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port));
+    }
+    const std::size_t num_messages = 1;
+    std::size_t send_size = mutils::bytes_size(num_messages) + mutils::bytes_size(*message);
+    char buffer[send_size + sizeof(send_size)];
+    std::memcpy(buffer, (char*)&send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    bytes_written += mutils::to_bytes(num_messages, buffer + bytes_written);
+    bytes_written += mutils::to_bytes(*message, buffer + bytes_written);
+    sockets_by_id.at(recipient_id).write(buffer, send_size + sizeof(send_size));
 }
 
 void TcpUtilityClient::receive_message(const std::vector<char>& message_bytes) {

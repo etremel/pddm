@@ -12,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include "BaseTcpClient.h"
+#include "TcpAddress.h"
 #include "../UtilityNetworkClient.h"
 
 namespace pddm {

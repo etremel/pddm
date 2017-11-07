@@ -106,6 +106,10 @@ class MeterClient {
          * respond to them as they arrive. This function call never returns. */
         void main_loop();
 
+        /** Shuts down the message-listening loop to allow the client to exit cleanly.
+         * Obviously, this must be called from a separate thread from main_loop(). */
+        void shut_down();
+
         int get_num_meters() const { return num_meters; }
         //Obscene hack to allow Simulator to connect meters to the simulated Network. There's got to be a better way.
         NetworkClient_t& get_network_client() { return network_client; }

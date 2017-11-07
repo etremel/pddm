@@ -27,59 +27,82 @@ TcpNetworkClient::TcpNetworkClient(MeterClient& owning_meter_client, const TcpAd
                 BaseTcpClient(this, my_address, meter_ips_by_id),
                 logger(spdlog::get("global_logger")),
                 meter_client(owning_meter_client),
-                utility_address(utility_address),
-                num_messages_sent(0) {}
+                num_messages_sent(0) {
+    sockets_by_id.emplace(UTILITY_NODE_ID, Socket(utility_address.ip_addr, utility_address.port));
+}
 
 bool TcpNetworkClient::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage> >& messages, const int recipient_id) {
-    Socket recipient_socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port);
-    bool success = true;
-    auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = recipient_socket.write(bytes, size) && success; };
-    std::size_t bytes_sent = 0;
-    mutils::post_object(bind_socket_write, messages.size());
-    bytes_sent += mutils::bytes_size(messages.size());
+    //Construct a new socket for this node if there is not one already in the map
+    auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
+    if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
+        sockets_by_id.emplace_hint(socket_map_find, recipient_id,
+                Socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port));
+    }
+    std::size_t send_size = mutils::bytes_size(messages.size());
     for(const auto& message : messages) {
-        mutils::post_object(bind_socket_write, *message);
-        bytes_sent += mutils::bytes_size(*message);
+        send_size += mutils::bytes_size(*message);
+    }
+    char buffer[send_size + sizeof(send_size)];
+    std::memcpy(buffer, (char*)&send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    bytes_written += mutils::to_bytes(messages.size(), buffer + bytes_written);
+    for(const auto& message : messages) {
+        bytes_written += mutils::to_bytes(*message, buffer + bytes_written);
         num_messages_sent++;
     }
+    bool success = sockets_by_id.at(recipient_id).write(buffer, send_size + sizeof(send_size));
     return success;
 }
 
 bool TcpNetworkClient::send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id) {
-    //AggregationMessages might be sent to the utility, which has ID -1
-    Socket recipient_socket;
-    if(recipient_id == UTILITY_NODE_ID) {
-        recipient_socket = Socket(utility_address.ip_addr, utility_address.port);
-    } else {
-        recipient_socket = Socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port);
+    //Construct a new socket for this node if there is not one already in the map
+    auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
+    if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
+        sockets_by_id.emplace_hint(socket_map_find, recipient_id,
+                Socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port));
     }
-    bool success = true;
-    auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = recipient_socket.write(bytes, size) && success; };
+    const std::size_t num_messages = 1;
+    std::size_t send_size = mutils::bytes_size(*message);
     //The utility doesn't need a "number of messages" header because it only accepts one message
     if(recipient_id != UTILITY_NODE_ID) {
-        mutils::post_object(bind_socket_write, static_cast<std::size_t>(1));
+        send_size += mutils::bytes_size(num_messages);
     }
-    mutils::post_object(bind_socket_write, *message);
+    char buffer[send_size + sizeof(send_size)];
+    std::memcpy(buffer, (char*)&send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    if(recipient_id != UTILITY_NODE_ID) {
+        bytes_written += mutils::to_bytes(num_messages, buffer + bytes_written);
+    }
+    bytes_written += mutils::to_bytes(*message, buffer + bytes_written);
+    bool success = sockets_by_id.at(recipient_id).write(buffer, send_size + sizeof(send_size));
     num_messages_sent++;
     return success;
 }
 
 bool TcpNetworkClient::send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) {
-    Socket recipient_socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port);
-    bool success = true;
-    auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = recipient_socket.write(bytes, size) && success; };
-    mutils::post_object(bind_socket_write, static_cast<std::size_t>(1));
-    mutils::post_object(bind_socket_write, *message);
+    auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
+    if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
+        sockets_by_id.emplace_hint(socket_map_find, recipient_id,
+                Socket(id_to_ip_map.at(recipient_id).ip_addr, id_to_ip_map.at(recipient_id).port));
+    }    const std::size_t num_messages = 1;
+    std::size_t send_size = mutils::bytes_size(num_messages) + mutils::bytes_size(*message);
+    char buffer[send_size + sizeof(send_size)];
+    std::memcpy(buffer, (char*)&send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    bytes_written += mutils::to_bytes(num_messages, buffer + bytes_written);
+    bytes_written += mutils::to_bytes(*message, buffer + bytes_written);
+    bool success = sockets_by_id.at(recipient_id).write(buffer, send_size + sizeof(send_size));
     num_messages_sent++;
     return success;
 }
 
 bool TcpNetworkClient::send(const std::shared_ptr<messaging::SignatureRequest>& message) {
-    Socket utility_socket(utility_address.ip_addr, utility_address.port);
-    bool success;
-    auto bind_socket_write = [&](const char* bytes, std::size_t size) { success = utility_socket.write(bytes, size); };
     //No "number of messages" header for the utility
-    mutils::post_object(bind_socket_write, *message);
+    std::size_t send_size = mutils::bytes_size(*message);
+    char buffer[send_size + sizeof(send_size)];
+    std::memcpy(buffer, (char*)&send_size, sizeof(send_size));
+    mutils::to_bytes(*message, buffer + sizeof(send_size));
+    bool success = sockets_by_id.at(UTILITY_NODE_ID).write(buffer, send_size + sizeof(send_size));
     num_messages_sent++;
     return success;
 }
@@ -120,6 +143,7 @@ void TcpNetworkClient::receive_message(const std::vector<char>& message_bytes) {
         case QueryRequest::type: {
             std::shared_ptr<QueryRequest> message(mutils::from_bytes<QueryRequest>(nullptr, buffer));
             buffer += mutils::bytes_size(*message);
+            std::cout << "Received a QueryRequest: " << *message << std::endl;
             meter_client.handle_message(message);
             break;
         }

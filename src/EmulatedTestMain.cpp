@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     ProtocolState_t::init_failures_tolerated(num_meters);
 
     const int NUM_QUERIES = 3;
-    const auto TIME_PER_TIMESTEP = std::chrono::seconds(30);
+    const auto TIME_PER_TIMESTEP = std::chrono::seconds(10);
     //An ID of -1 means this should be the utility client, not a meter client
     if(meter_id < 0) {
         auto utility_client = std::make_unique<UtilityClient>(num_meters,
@@ -81,9 +81,12 @@ int main(int argc, char** argv) {
                 std::this_thread::sleep_for(TIME_PER_TIMESTEP * timesteps_in_30_min);
             }
             std::cout << "Done issuing queries" << std::endl;
+            std::this_thread::sleep_for(TIME_PER_TIMESTEP * 3);
+            utility_client->shut_down();
         });
         //Start listening for incoming messages. This will not return.
         utility_client->listen_loop();
+        utility_query_thread.join();
     } else {
         networking::TcpAddress my_ip = meter_ips_by_id.at(meter_id);
         std::map<std::string, simulation::Device> possible_devices;
@@ -123,6 +126,7 @@ int main(int argc, char** argv) {
 
         //Start waiting for incoming messages to respond to. This will not return.
         my_client->main_loop();
+        sim_meter_advance_thread.join();
     }
     return 0;
 }
