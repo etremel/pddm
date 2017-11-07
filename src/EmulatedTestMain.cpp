@@ -38,13 +38,13 @@ int main(int argc, char** argv) {
     int meter_id = std::atoi(argv[1]);
 
     //Set up static global logging framework
-    std::string filename("emulated_log_node_" + std::to_string(meter_id));
+    std::string filename("emulated_log_node_" + std::to_string(meter_id) + ".txt");
     std::vector<spdlog::sink_ptr> log_sinks;
     log_sinks.push_back(std::make_shared<spdlog::sinks::rotating_file_sink_mt>(filename, 1024 * 1024 * 500, 3));
     log_sinks.push_back(std::make_shared<spdlog::sinks::stdout_sink_mt>());
     std::shared_ptr<spdlog::logger> logger = spdlog::create("global_logger", log_sinks.begin(), log_sinks.end());
     logger->set_pattern("[%H:%M:%S.%e] [%l] %v");
-    logger->set_level(spdlog::level::trace);
+    logger->set_level(spdlog::level::debug);
 
     //Second argument is assumed to be the utility's IP:port
     networking::TcpAddress utility_ip = networking::parse_tcp_string(std::string(argv[2]));
