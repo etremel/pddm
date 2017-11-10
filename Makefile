@@ -11,7 +11,7 @@ CPPFLAGS := -std=c++17 -g3 -O0 -Wall
 
 LFLAGS := -Wl,-rpath='$$ORIGIN/../$(LIB_DIR)/mutils',-rpath='$$ORIGIN/../$(LIB_DIR)/mutils-serialization' -L"$(LIB_DIR)/mutils/" -L"$(LIB_DIR)/mutils-serialization/" 
 INCLUDES := -I"$(SRC_DIR)/" -I"$(LIB_DIR)/" -I"$(LIB_DIR)/mutils/" -I"$(LIB_DIR)/mutils-serialization/"
-LIBS := -lmutils -lmutils-serialization -lpthread -lrt 
+LIBS := -lmutils -lmutils-serialization -lpthread -lrt -lcryptopp
 
 #Lazily evaluated: SRCS won't be defined until a target is chosen
 OBJS = $(SRCS:$(SRC_DIR)/%=$(BUILD_DIR)/%.o)
@@ -60,7 +60,6 @@ simple_messaging_test: SRCS = $(COMMON_SRCS) $(SIMPLE_MESSAGING_TEST_SRCS)
 .SECONDEXPANSION:
 simple_messaging_test: $$(OBJS)
 	$(CXX) $(OBJS) $(LFLAGS) -o $(BUILD_DIR)/$@ $(LIBS)
-
 
 
 .PHONY: clean
