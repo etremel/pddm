@@ -71,19 +71,26 @@ std::shared_ptr<messaging::StringBody> SimCrypto::rsa_encrypt(const int caller_i
     return std::make_shared<messaging::StringBody>();
 }
 
+std::shared_ptr<messaging::StringBody> SimCrypto::rsa_blind(const int caller_id,
+                const std::shared_ptr<messaging::ValueTuple>& value) {
+    //"Blinding" is a multiplication and exponentiation using the utility's public key, so it's basically encryption
+    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_ENCRYPT_TIME_MICROS);
+    return std::make_shared<messaging::StringBody>();
+}
+
 //std::shared_ptr<messaging::ValueTuple> SimCrypto::rsa_decrypt(const int caller_id,
 //        const std::shared_ptr<messaging::MessageBody>& value) {
 //    if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_DECRYPT_TIME_MICROS);
 //    return std::static_pointer_cast<messaging::ValueTuple>(value);
 //}
 
-std::shared_ptr<messaging::StringBody> SimCrypto::rsa_sign_encrypted(const int caller_id,
-        const std::shared_ptr<messaging::StringBody>& encrypted_message) {
+std::shared_ptr<messaging::StringBody> SimCrypto::rsa_sign_blinded(const int caller_id,
+        const std::shared_ptr<messaging::StringBody>& blinded_message) {
     if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_SIGN_TIME_MICROS);
-    return encrypted_message;
+    return blinded_message;
 }
 
-void SimCrypto::rsa_decrypt_signature(const int caller_id,
+void SimCrypto::rsa_unblind_signature(const int caller_id,
         const std::shared_ptr<std::string>& blinded_signature, util::SignatureArray& signature) {
     if(caller_id > -1) meter_network_clients.at(caller_id).get().delay_client(RSA_DECRYPT_TIME_MICROS);
     signature.fill(0);

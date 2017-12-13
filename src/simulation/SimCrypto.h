@@ -50,9 +50,11 @@ class SimCrypto {
                 const std::shared_ptr<messaging::ValueTuple>& value, const int target_meter_id);
 //        std::shared_ptr<messaging::ValueTuple> rsa_decrypt(const int caller_id,
 //                const std::shared_ptr<messaging::MessageBody>& value);
-        std::shared_ptr<messaging::StringBody> rsa_sign_encrypted(const int caller_id,
-                const std::shared_ptr<messaging::StringBody>& encrypted_message);
-        void rsa_decrypt_signature(const int caller_id, const std::shared_ptr<std::string>& blinded_signature,
+        std::shared_ptr<messaging::StringBody> rsa_blind(const int caller_id,
+                const std::shared_ptr<messaging::ValueTuple>& value);
+        std::shared_ptr<messaging::StringBody> rsa_sign_blinded(const int caller_id,
+                const std::shared_ptr<messaging::StringBody>& blinded_message);
+        void rsa_unblind_signature(const int caller_id, const std::shared_ptr<std::string>& blinded_signature,
                 util::SignatureArray& signature);
         void rsa_sign(const int caller_id, const messaging::ValueContribution& value,
                 util::SignatureArray& signature);

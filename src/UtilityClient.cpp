@@ -36,7 +36,7 @@ void UtilityClient::handle_message(const std::shared_ptr<messaging::AggregationM
 
 void UtilityClient::handle_message(const std::shared_ptr<messaging::SignatureRequest>& message) {
     if(curr_query_meters_signed.find(message->sender_id) == curr_query_meters_signed.end()) {
-        auto signed_value = crypto_library.rsa_sign_encrypted(std::static_pointer_cast<StringBody>(message->body));
+        auto signed_value = crypto_library.rsa_sign_blinded(std::static_pointer_cast<StringBody>(message->body));
         network.send(std::make_shared<messaging::SignatureResponse>(UTILITY_NODE_ID, signed_value), message->sender_id);
         curr_query_meters_signed.insert(message->sender_id);
     }

@@ -31,6 +31,10 @@ EMULATED_NETWORK_SRCS := EmulatedTestMain.cpp simulation/Meter.cpp simulation/Si
 EMULATED_NETWORK_SRCS := $(addprefix $(SRC_DIR)/,$(EMULATED_NETWORK_SRCS))
 EMULATED_NETWORK_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
 
+EMULATED_CRYPTO_SRCS := EmulatedTestWithCrypto.cpp simulation/Meter.cpp simulation/Simparameters.cpp
+EMULATED_CRYPTO_SRCS := $(addprefix $(SRC_DIR)/,$(EMULATED_CRYPTO_SRCS))
+EMULATED_CRYPTO_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
+
 SIMPLE_MESSAGING_TEST_SRCS := SimpleMessagingTest.cpp 
 SIMPLE_MESSAGING_TEST_SRCS := $(addprefix $(SRC_DIR)/,$(SIMPLE_MESSAGING_TEST_SRCS))
 SIMPLE_MESSAGING_TEST_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
@@ -53,6 +57,12 @@ emulated_network_test: SRCS = $(COMMON_SRCS) $(EMULATED_NETWORK_SRCS)
 
 .SECONDEXPANSION:
 emulated_network_test: $$(OBJS)
+	$(CXX) $(OBJS) $(LFLAGS) -o $(BUILD_DIR)/$@ $(LIBS)
+
+emulated_with_crypto: SRCS = $(COMMON_SRCS) $(EMULATED_CRYPTO_SRCS)
+
+.SECONDEXPANSION:
+emulated_with_crypto: $$(OBJS)
 	$(CXX) $(OBJS) $(LFLAGS) -o $(BUILD_DIR)/$@ $(LIBS)
 
 simple_messaging_test: SRCS = $(COMMON_SRCS) $(SIMPLE_MESSAGING_TEST_SRCS)

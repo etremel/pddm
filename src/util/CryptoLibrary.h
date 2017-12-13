@@ -59,23 +59,39 @@ class CryptoLibrary {
                 const std::shared_ptr<messaging::OverlayMessage>& message) = 0;
 
         /**
-         * Signs a ciphertext with the current client's private key.
-         * @param encrypted_message The ciphertext to sign, which we expect to
-         * be the encrypted body of an OverlayMessage (hence the StringBody type).
-         * @return A blind signature over the ciphertext, which is also a
-         * ciphertext represented as a StringBody
+         * Creates a blinded message representing a ValueTuple, by multiplying
+         * its numeric representation by a random value that is invertible under
+         * the RSA modulus of utility's public key. (Blinded messages are only ever
+         * sent to the utility.)
+         * @param value The value to blind
+         * @return A byte sequence containing the blinded message.
          */
-        virtual std::shared_ptr<messaging::StringBody> rsa_sign_encrypted(
-                const std::shared_ptr<messaging::StringBody>& encrypted_message) = 0;
+        virtual std::shared_ptr<messaging::StringBody> rsa_blind(
+                const std::shared_ptr<messaging::ValueTuple>& value) = 0;
 
         /**
-         * Decrypts a ciphertext with the current client's private key, assuming
-         * the ciphertext is a blinded signature, and places the resulting
-         * signature in the SignatureArray.
-         * @param blinded_signature The blinded signature to decrypt
-         * @param signature The decrypted signature
+         * Signs a blinded message with the current client's private key.
+         * This should not be used to sign any other kind of message, because
+         * it uses a nonstandard "raw" signature.
+         * @param encrypted_message A blinded message to sign, which will be
+         * stored as a sequence of bytes and sent in an OverlayMessage (hence
+         * the StringBody type).
+         * @return A blind signature over the message, which is also a
+         * sequence of bytes represented as a StringBody
          */
-        virtual void rsa_decrypt_signature(const std::shared_ptr<std::string>& blinded_signature,
+        virtual std::shared_ptr<messaging::StringBody> rsa_sign_blinded(
+                const std::shared_ptr<messaging::StringBody>& blinded_message) = 0;
+
+        /**
+         * Unblinds a signature using the inverse of the blinding value this
+         * client most recently used. This only works because blind-signature
+         * requests are sent sequentially (and to only one destination,
+         * the utility). The unblinded signature is placed in the SignatureArray
+         * parameter.
+         * @param blinded_signature The blinded signature to unblind
+         * @param signature The unblinded signature
+         */
+        virtual void rsa_unblind_signature(const std::shared_ptr<std::string>& blinded_signature,
                 SignatureArray& signature) = 0;
 
         /**

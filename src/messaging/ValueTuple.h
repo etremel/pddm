@@ -18,7 +18,7 @@ namespace pddm {
 
 namespace messaging {
 
-struct ValueTuple {
+struct ValueTuple : public mutils::ByteRepresentable {
         int query_num;
         std::vector<FixedPoint_t> value;
         std::vector<int> proxies;
@@ -27,8 +27,7 @@ struct ValueTuple {
             query_num(query_num), value(value), proxies(proxies) {}
 //        ValueTuple(const ValueTuple&) = default;
 //        ValueTuple(ValueTuple&&) = default;
-
-
+        DEFAULT_SERIALIZATION_SUPPORT(ValueTuple, query_num, value, proxies);
 };
 
 inline std::ostream& operator<<(std::ostream& stream, const ValueTuple& tuple) {

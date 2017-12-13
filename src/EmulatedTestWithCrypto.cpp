@@ -1,13 +1,11 @@
 /**
- * @file EmulatedTestMain.cpp
- * A "main" file for running the smart metering protocol with a "real" network
- * (probably emulated within one machine) but simulated smart meter data. Each
- * process running this program will emulate one smart meter.
- * @date Oct 7, 2016
+ * @file EmulatedTestWithCrypto.cpp
+ *
+ * @date Dec 12, 2017
  * @author edward
  */
 
-#include <cstdlib>
+
 #include <iostream>
 #include <map>
 #include <random>
@@ -26,18 +24,25 @@ void query_finished_callback(const int query_num, std::shared_ptr<messaging::Agg
     std::cout << "Result was: " << *result << std::endl;
 }
 
+void print_usage_info() {
+    std::cout << "Usage:" << std::endl;
+    std::cout << "For utility-client mode, arguments are: -1 <my IP> <utility private key file> <meter IP configuration file> <public key folder>" << std::endl << std::endl;;
+    std::cout << "For meter-client mode, arguments are: <my ID> <utility IP address> <utility public key file> "
+            << "<meter IP configuration file> <public key folder> <private key folder> <device configuration files> " << std::endl;
+    std::cout << "Device characteristic files are: power load, mean daily frequency, "
+            "hourly usage probability, and household saturation." << std::endl;
+}
+
 int main(int argc, char** argv) {
     const int NUM_QUERIES = 3;
     const auto TIME_PER_TIMESTEP = std::chrono::seconds(10);
 
-    if(argc < 8) {
-        std::cout << "Expected arguments: <my ID> <utility IP address> <meter IP configuration file> <device configuration files> " << std::endl;
-        std::cout << "Device characteristic files are: power load, mean daily frequency, "
-                "hourly usage probability, and household saturation." << std::endl;
+    if(argc < 6) {
+        std::cout << "Too few arguments!" << std::endl;
+        print_usage_info();
         return -1;
     }
 
-    //First argument is my ID
     int meter_id = std::atoi(argv[1]);
 
     //Set up static global logging framework
@@ -49,28 +54,40 @@ int main(int argc, char** argv) {
     logger->set_pattern("[%H:%M:%S.%e] [%l] %v");
     logger->set_level(spdlog::level::debug);
 
-    //Second argument is assumed to be the utility's IP:port
+    //Second argument is always the utility's IP:port
     networking::TcpAddress utility_ip = networking::parse_tcp_string(std::string(argv[2]));
 
-    //Read and parse the IP addresses
-    std::map<int, networking::TcpAddress> meter_ips_by_id = util::read_ip_map_from_file(std::string(argv[3]));
+    //Fourth argument is always the meter IP addresses file
+    std::map<int, networking::TcpAddress> meter_ips_by_id = util::read_ip_map_from_file(std::string(argv[4]));
 
     int num_meters = meter_ips_by_id.size();
     int modulus = util::get_valid_prime_modulus(num_meters);
     if(modulus != num_meters) {
-        std::cout << "ERROR: The number of meters specified in " << std::string(argv[3]) << " is not a valid prime. "
+        std::cout << "ERROR: The number of meters specified in " << std::string(argv[4]) << " is not a valid prime. "
                 << "This experiment does not handle non-prime numbers of meters." << std::endl;
         return -1;
     }
     ProtocolState_t::init_failures_tolerated(num_meters);
 
-    //An ID of -1 means this should be the utility client, not a meter client
-    if(meter_id < 0) {
+    //Build the file paths for all the public keys based on the folder name
+    std::string meter_public_key_folder = std::string(argv[5]);
+    std::map<int, std::string> meter_public_key_files;
+    for(int id = 0; id < num_meters; ++id) {
+        std::stringstream file_path;
+        file_path << meter_public_key_folder << "/pubkey_" << id << ".der";
+        meter_public_key_files.emplace(id, file_path.str());
+    }
+
+    //Now branch based on first argument (ID); if -1, we're the utility client
+    if(meter_id == -1) {
+        std::string utility_private_key_file = std::string(argv[3]);
+
         auto utility_client = std::make_unique<UtilityClient>(num_meters,
                 networking::utility_network_client_builder(utility_ip, meter_ips_by_id),
-                util::crypto_library_builder_utility(),
+                util::crypto_library_builder_utility(utility_private_key_file, meter_public_key_files),
                 util::timer_manager_builder_utility());
         utility_client->register_query_callback(query_finished_callback);
+
         //Start a background thread to issue queries
         std::thread utility_query_thread([NUM_QUERIES, TIME_PER_TIMESTEP, logger, &utility_client]() {
             for(int query_count = 0; query_count < NUM_QUERIES; ++query_count) {
@@ -89,11 +106,22 @@ int main(int argc, char** argv) {
         utility_client->listen_loop();
         utility_query_thread.join();
     } else {
+        std::string utility_public_key_file = std::string(argv[3]);
+        meter_public_key_files.emplace(UTILITY_NODE_ID, utility_public_key_file);
+        if(argc < 11) {
+            std::cout << "Too few arguments!" << std::endl;
+            print_usage_info();
+            return -1;
+        }
+        std::string meter_private_key_folder = std::string(argv[6]);
+        std::stringstream private_key_path;
+        private_key_path << meter_private_key_folder << "/privkey_" << meter_id << ".der";
+
         networking::TcpAddress my_ip = meter_ips_by_id.at(meter_id);
         std::map<std::string, simulation::Device> possible_devices;
         std::map<std::string, double> devices_saturation;
-        util::read_devices_from_files(std::string(argv[4]), std::string(argv[5]),
-                std::string(argv[6]), std::string(argv[7]),
+        util::read_devices_from_files(std::string(argv[7]), std::string(argv[8]),
+                std::string(argv[9]), std::string(argv[10]),
                 possible_devices, devices_saturation);
 
         //For now I'll just hard-code this in, since I'm not paying attention to prices
@@ -110,9 +138,10 @@ int main(int argc, char** argv) {
         std::shared_ptr<simulation::Meter> sim_meter(simulation::generate_meter(income_distribution, possible_devices,
                 devices_saturation, sim_energy_price, random_engine).release());
 
+
         auto my_client = std::make_unique<MeterClient>(meter_id, num_meters, sim_meter,
                 networking::network_client_builder(my_ip, utility_ip, meter_ips_by_id),
-                util::crypto_library_builder(),
+                util::crypto_library_builder(private_key_path.str(), meter_public_key_files),
                 util::timer_manager_builder());
 
         //Start a background thread to repeatedly poke the simulated meter
@@ -128,5 +157,7 @@ int main(int argc, char** argv) {
         my_client->main_loop();
         sim_meter_advance_thread.join();
     }
+
     return 0;
 }
+

@@ -30,15 +30,15 @@ void BftProtocolState::start_query_impl(const QueryRequest& query_request,
     protocol_phase = BftProtocolPhase::SETUP;
     accepted_proxy_values.clear();
     agreement_phase_state = std::make_unique<CrusaderAgreementState>(meter_id, num_meters, query_request.query_number, crypto);
-    //Encrypt my ValueTuple and send it to the utility to be signed
-    auto encrypted_contribution = crypto.rsa_encrypt(my_contribution, meter_id);
-    network.send(std::make_shared<messaging::SignatureRequest>(meter_id, encrypted_contribution));
+    //Blind my ValueTuple and send it to the utility to be signed
+    auto blinded_contribution = crypto.rsa_blind(my_contribution);
+    network.send(std::make_shared<messaging::SignatureRequest>(meter_id, blinded_contribution));
 }
 
 void BftProtocolState::handle_signature_response(const std::shared_ptr<SignatureResponse>& message) {
     auto signed_contribution = std::make_shared<ValueContribution>(*my_contribution);
     //Decrypt the utility's signature and copy it into ValueContribution's signature field
-    crypto.rsa_decrypt_signature(as_string_pointer(std::static_pointer_cast<SignatureResponse::body_type>(message->body)),
+    crypto.rsa_unblind_signature(as_string_pointer(std::static_pointer_cast<SignatureResponse::body_type>(message->body)),
             signed_contribution->signature);
 
     logger->debug("Meter {} is finished with Setup", meter_id);

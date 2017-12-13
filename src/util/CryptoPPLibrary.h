@@ -35,10 +35,19 @@ class CryptoPPLibrary : public CryptoLibrary {
         CryptoPP::RSAES_OAEP_SHA_Encryptor my_rsa_encryptor;
         CryptoPP::RSAES_OAEP_SHA_Decryptor my_rsa_decryptor;
         std::map<int, CryptoPP::RSA::PublicKey> public_keys_by_id;
+        CryptoPP::Integer last_blind_inverse;
 
         CryptoPP::RSA::PrivateKey load_private_key(const std::string& private_key_filename);
 
     public:
+        /**
+         * Constructs a CryptoLibrary implemented with Crypto++, loading the
+         * public and private key information from files on disk.
+         * @param private_key_filename The name of the DER file containing this node's private key.
+         * @param public_key_files_by_id Maps each node ID to the name of the DER
+         * file containing that node's public key. The utility's public key should
+         * be at the entry for -1.
+         */
         CryptoPPLibrary(const std::string& private_key_filename, const std::map<int, std::string>& public_key_files_by_id);
         virtual ~CryptoPPLibrary() = default;
 
@@ -48,10 +57,13 @@ class CryptoPPLibrary : public CryptoLibrary {
         std::shared_ptr<messaging::OverlayMessage> rsa_decrypt(
                 const std::shared_ptr<messaging::OverlayMessage>& message);
 
-        std::shared_ptr<messaging::StringBody> rsa_sign_encrypted(
-                const std::shared_ptr<messaging::StringBody>& encrypted_message);
+        std::shared_ptr<messaging::StringBody> rsa_blind(
+                const std::shared_ptr<messaging::ValueTuple>& value);
 
-        void rsa_decrypt_signature(const std::shared_ptr<std::string>& blinded_signature,
+        std::shared_ptr<messaging::StringBody> rsa_sign_blinded(
+                const std::shared_ptr<messaging::StringBody>& blinded_message);
+
+        void rsa_unblind_signature(const std::shared_ptr<std::string>& blinded_signature,
                 SignatureArray& signature);
 
         std::shared_ptr<messaging::StringBody> rsa_encrypt(
@@ -69,8 +81,10 @@ class CryptoPPLibrary : public CryptoLibrary {
 
 };
 
-std::function<CryptoPPLibrary (MeterClient&)> crypto_library_builder();
-std::function<CryptoPPLibrary (UtilityClient&)> crypto_library_builder_utility();
+std::function<CryptoPPLibrary (MeterClient&)> crypto_library_builder(const std::string& private_key_filename,
+        const std::map<int, std::string>& public_key_files_by_id);
+std::function<CryptoPPLibrary (UtilityClient&)> crypto_library_builder_utility(const std::string& private_key_filename,
+        const std::map<int, std::string>& public_key_files_by_id);
 } // namespace util
 
 

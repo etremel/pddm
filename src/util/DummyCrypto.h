@@ -50,11 +50,18 @@ class DummyCrypto : public CryptoLibrary {
             return std::make_shared<messaging::StringBody>(stringifier.str());
         }
 
-        std::shared_ptr<messaging::StringBody> rsa_sign_encrypted(
+        std::shared_ptr<messaging::StringBody> rsa_blind(
+                const std::shared_ptr<messaging::ValueTuple>& value) override {
+            std::stringstream stringifier;
+            stringifier << *value;
+            return std::make_shared<messaging::StringBody>(stringifier.str());
+        }
+
+        std::shared_ptr<messaging::StringBody> rsa_sign_blinded(
                 const std::shared_ptr<messaging::StringBody>& encrypted_message) override {
             return encrypted_message;
         }
-        void rsa_decrypt_signature(const std::shared_ptr<std::string>& blinded_signature,
+        void rsa_unblind_signature(const std::shared_ptr<std::string>& blinded_signature,
                 util::SignatureArray& signature) override {
             signature.fill(0);
         }

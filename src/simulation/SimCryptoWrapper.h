@@ -56,10 +56,14 @@ class SimCryptoWrapper: public util::CryptoLibrary {
 //                const std::shared_ptr<messaging::MessageBody>& value) override {
 //            return inner_sim_crypto.rsa_decrypt(calling_meter_id, value);
 //        }
-        std::shared_ptr<messaging::StringBody> rsa_sign_encrypted(const std::shared_ptr<messaging::StringBody>& encrypted_message) override {
+        std::shared_ptr<messaging::StringBody> rsa_blind(
+                const std::shared_ptr<messaging::ValueTuple>& value) override {
+            return inner_sim_crypto.rsa_blind(calling_meter_id, value);
+        }
+        std::shared_ptr<messaging::StringBody> rsa_sign_blinded(const std::shared_ptr<messaging::StringBody>& encrypted_message) override {
             return inner_sim_crypto.rsa_sign_encrypted(calling_meter_id, encrypted_message);
         }
-        void rsa_decrypt_signature(const std::shared_ptr<std::string>& blinded_signature, util::SignatureArray& signature) override {
+        void rsa_unblind_signature(const std::shared_ptr<std::string>& blinded_signature, util::SignatureArray& signature) override {
             return inner_sim_crypto.rsa_decrypt_signature(calling_meter_id, blinded_signature, signature);
         }
         void rsa_sign(const messaging::ValueContribution& value, util::SignatureArray& signature) override {

@@ -32,6 +32,7 @@ class SimCryptoWrapper;
 namespace util {
 class LinuxTimerManager;
 class DummyCrypto;
+class CryptoPPLibrary;
 }
 
 namespace networking {
@@ -49,7 +50,8 @@ using UtilityNetworkClient_t = networking::TcpUtilityClient;
 //using TimerManager_t = simulation::SimTimerManager;
 using TimerManager_t = util::LinuxTimerManager;
 //using CryptoLibrary_t = simulation::SimCryptoWrapper;
-using CryptoLibrary_t = util::DummyCrypto;
+//using CryptoLibrary_t = util::DummyCrypto;
+using CryptoLibrary_t = util::CryptoPPLibrary;
 
 using NetworkClientBuilderFunc = std::function<NetworkClient_t (MeterClient&)>;
 using CryptoLibraryBuilderFunc = std::function<CryptoLibrary_t (MeterClient&)>;
