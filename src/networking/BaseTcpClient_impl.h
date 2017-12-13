@@ -163,7 +163,7 @@ void BaseTcpClient<Impl>::monitor_incoming_messages() {
                 /* Block until the entire message has been read - the sender should have
                  * packed it into one send, so this won't block for very long. */
                 ssize_t msg_bytes_read = recv(events[i].data.fd, sender_buffers[events[i].data.fd].data(), message_size, MSG_WAITALL);
-                if(msg_bytes_read != message_size) {
+                if(msg_bytes_read != (ssize_t) message_size) {
                     //Client must have failed or disconnected
                     perror("Failure while reading a message from a client");
                     sender_buffers.erase(events[i].data.fd);

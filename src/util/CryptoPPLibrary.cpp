@@ -134,7 +134,7 @@ std::shared_ptr<messaging::StringBody> CryptoPPLibrary::rsa_blind(const std::sha
     CryptoPP::Integer r_to_e = public_keys_by_id.at(-1).ApplyFunction(r);
     CryptoPP::Integer blinded_int = utility_modulus_operator.Multiply(value_as_int, r_to_e);
     //Now I want to store this "integer" as bytes so I can put it in a StringBody. Is this how to do it?? Or will "encode" transform it irreversably?
-    std::shared_ptr<messaging::StringBody> blinded_int_bytes = std::make_shared<messaging::StringBody>(blinded_int.MinEncodedSize(), '');
+    std::shared_ptr<messaging::StringBody> blinded_int_bytes = std::make_shared<messaging::StringBody>(blinded_int.MinEncodedSize(), ' ');
     blinded_int.Encode((byte*) blinded_int_bytes->data(), blinded_int_bytes->size());
     return blinded_int_bytes;
 }

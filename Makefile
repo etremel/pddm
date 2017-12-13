@@ -31,7 +31,7 @@ EMULATED_NETWORK_SRCS := EmulatedTestMain.cpp simulation/Meter.cpp simulation/Si
 EMULATED_NETWORK_SRCS := $(addprefix $(SRC_DIR)/,$(EMULATED_NETWORK_SRCS))
 EMULATED_NETWORK_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
 
-EMULATED_CRYPTO_SRCS := EmulatedTestWithCrypto.cpp simulation/Meter.cpp simulation/Simparameters.cpp
+EMULATED_CRYPTO_SRCS := EmulatedTestWithCrypto.cpp simulation/Meter.cpp simulation/SimParameters.cpp
 EMULATED_CRYPTO_SRCS := $(addprefix $(SRC_DIR)/,$(EMULATED_CRYPTO_SRCS))
 EMULATED_CRYPTO_SRCS += $(shell find $(SRC_DIR)/networking -name *.cpp)
 
