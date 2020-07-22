@@ -70,7 +70,7 @@ std::shared_ptr<messaging::OverlayMessage> CryptoPPLibrary::rsa_encrypt(const st
     //Generate a fresh random AES key and set up the encryptor
     CryptoPP::SecByteBlock symmetric_key(CryptoPP::AES::DEFAULT_KEYLENGTH);
     rng.GenerateBlock(symmetric_key.data(), symmetric_key.size());
-    byte iv[CryptoPP::AES::BLOCKSIZE];
+    CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE];
     rng.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
     CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption aes_encryptor;
     aes_encryptor.SetKeyWithIV(symmetric_key, symmetric_key.size(), iv);
@@ -101,14 +101,14 @@ std::shared_ptr<messaging::OverlayMessage> CryptoPPLibrary::rsa_decrypt(const st
     std::shared_ptr<messaging::StringBody> body_string = std::static_pointer_cast<messaging::StringBody>(message->body);
     CryptoPP::SecByteBlock key_plus_iv(CryptoPP::AES::DEFAULT_KEYLENGTH + CryptoPP::AES::BLOCKSIZE);
     //Decrypt exactly FixedCipherTextLength() bytes from the beginning of the body, to get the key+IV data block
-    my_rsa_decryptor.Decrypt(rng, (byte*) body_string->c_str(), my_rsa_decryptor.FixedCiphertextLength(), key_plus_iv);
+    my_rsa_decryptor.Decrypt(rng, (CryptoPP::byte*) body_string->c_str(), my_rsa_decryptor.FixedCiphertextLength(), key_plus_iv);
     CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption aes_decryptor;
     //Give SetKeyWithIV a pointer to the second part of the decrypted array, which should contain the IV
     aes_decryptor.SetKeyWithIV(key_plus_iv, CryptoPP::AES::DEFAULT_KEYLENGTH,
             key_plus_iv.data() + CryptoPP::AES::DEFAULT_KEYLENGTH);
     //Give the AES decryptor filter an "array source" pointing into the StringBody past the key+IV ciphertext
     std::string body_bytes;
-    CryptoPP::ArraySource stream((byte*)(body_string->c_str() + my_rsa_decryptor.FixedCiphertextLength()),
+    CryptoPP::ArraySource stream((CryptoPP::byte*)(body_string->c_str() + my_rsa_decryptor.FixedCiphertextLength()),
             body_string->size() - my_rsa_decryptor.FixedCiphertextLength(), true,
             new CryptoPP::StreamTransformationFilter(aes_decryptor,
                     new CryptoPP::StringSink(body_bytes)));
@@ -121,7 +121,7 @@ std::shared_ptr<messaging::StringBody> CryptoPPLibrary::rsa_blind(const std::sha
     std::size_t bytes_size = mutils::bytes_size(*value);
     char value_bytes[bytes_size];
     mutils::to_bytes(*value, value_bytes);
-    CryptoPP::Integer value_as_int((const byte*) value_bytes, bytes_size);
+    CryptoPP::Integer value_as_int((const CryptoPP::byte*) value_bytes, bytes_size);
     CryptoPP::ModularArithmetic utility_modulus_operator(public_keys_by_id.at(-1).GetModulus());
     //Try to pick a random blind "r" that has an inverse modulo N
     CryptoPP::Integer r, rInv;
@@ -135,7 +135,7 @@ std::shared_ptr<messaging::StringBody> CryptoPPLibrary::rsa_blind(const std::sha
     CryptoPP::Integer blinded_int = utility_modulus_operator.Multiply(value_as_int, r_to_e);
     //Now I want to store this "integer" as bytes so I can put it in a StringBody. Is this how to do it?? Or will "encode" transform it irreversably?
     std::shared_ptr<messaging::StringBody> blinded_int_bytes = std::make_shared<messaging::StringBody>(blinded_int.MinEncodedSize(), ' ');
-    blinded_int.Encode((byte*) blinded_int_bytes->data(), blinded_int_bytes->size());
+    blinded_int.Encode((CryptoPP::byte*) blinded_int_bytes->data(), blinded_int_bytes->size());
     return blinded_int_bytes;
 }
 
@@ -146,21 +146,21 @@ std::shared_ptr<messaging::StringBody> CryptoPPLibrary::rsa_sign_blinded(const s
 //            new CryptoPP::SignerFilter(rng, my_rsa_signer,
 //                    new CryptoPP::StringSink(*signature_message)));
 
-    CryptoPP::Integer blind_message_as_int((const byte*) blinded_message->data(), blinded_message->size());
+    CryptoPP::Integer blind_message_as_int((const CryptoPP::byte*) blinded_message->data(), blinded_message->size());
     //CalculateInverse raises the input to the private exponent
     CryptoPP::Integer signed_blind_message = my_private_key.CalculateInverse(rng, blind_message_as_int);
     signature_message->resize(signed_blind_message.MinEncodedSize());
-    signed_blind_message.Encode((byte*) signature_message->data(), signature_message->size());
+    signed_blind_message.Encode((CryptoPP::byte*) signature_message->data(), signature_message->size());
     return signature_message;
 }
 
 void CryptoPPLibrary::rsa_unblind_signature(const std::shared_ptr<std::string>& blinded_signature, SignatureArray& signature) {
-    CryptoPP::Integer blinded_sig_as_int((const byte*) blinded_signature->data(), blinded_signature->size());
+    CryptoPP::Integer blinded_sig_as_int((const CryptoPP::byte*) blinded_signature->data(), blinded_signature->size());
     CryptoPP::ModularArithmetic utility_modulus_operator(public_keys_by_id.at(-1).GetModulus());
     CryptoPP::Integer sig_as_int = utility_modulus_operator.Multiply(blinded_sig_as_int, last_blind_inverse);
     //This had better work...unless this "encoding" of an "integer" doesn't do what I think it does
     assert(sig_as_int.MinEncodedSize() <= signature.size());
-    sig_as_int.Encode((byte*) signature.data(), signature.size());
+    sig_as_int.Encode((CryptoPP::byte*) signature.data(), signature.size());
 }
 
 std::shared_ptr<messaging::StringBody> CryptoPPLibrary::rsa_encrypt(const std::shared_ptr<messaging::ValueTuple>& value, const int target_meter_id) {
@@ -170,7 +170,7 @@ std::shared_ptr<messaging::StringBody> CryptoPPLibrary::rsa_encrypt(const std::s
     //Generate a fresh random AES key and set up the encryptor
     CryptoPP::SecByteBlock symmetric_key(CryptoPP::AES::DEFAULT_KEYLENGTH);
     rng.GenerateBlock(symmetric_key.data(), symmetric_key.size());
-    byte iv[CryptoPP::AES::BLOCKSIZE];
+    CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE];
     rng.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
     CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption aes_encryptor;
     aes_encryptor.SetKeyWithIV(symmetric_key, symmetric_key.size(), iv);
@@ -194,7 +194,7 @@ void CryptoPPLibrary::rsa_sign(const messaging::ValueContribution& value, Signat
     std::size_t value_bytes_length = mutils::bytes_size(value);
     char value_bytes[value_bytes_length];
     mutils::to_bytes(value, value_bytes);
-    my_rsa_signer.SignMessage(rng, (const byte*) value_bytes, value_bytes_length, signature.data());
+    my_rsa_signer.SignMessage(rng, (const CryptoPP::byte*) value_bytes, value_bytes_length, signature.data());
 }
 
 bool CryptoPPLibrary::rsa_verify(const messaging::ValueContribution& value, const SignatureArray& signature, const int signer_meter_id) {
